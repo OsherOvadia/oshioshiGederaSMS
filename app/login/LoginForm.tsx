@@ -20,10 +20,8 @@ export default function LoginForm() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok === true) {
-        const token = (data as { token?: string }).token;
-        window.location.href = token
-          ? "/admin?session=" + encodeURIComponent(token)
-          : "/admin";
+        // Session cookie is set by /api/login (Set-Cookie); just navigate.
+        window.location.href = "/admin";
         return;
       }
       if (res.status === 429 || data.error === "rate") {

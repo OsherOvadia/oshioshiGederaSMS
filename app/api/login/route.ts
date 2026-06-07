@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionJwt } from "@/lib/session-jwt";
+import { COOKIE_NAME, createSessionJwt, getCookieOptions } from "@/lib/session-jwt";
+import { verifyAdminPassword } from "@/lib/admin-auth";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
-
 export async function POST(req: NextRequest) {
   const ip = await getClientIp();
-  const { ok } = checkRateLimit(ip, "login", LIMITS.login.max);
+  const { ok } = await checkRateLimit(ip, "login", LIMITS.login.max);
   if (!ok) {
     return NextResponse.json({ ok: false, error: "rate" }, { status: 429 });
   }
@@ -21,9 +20,11 @@ export async function POST(req: NextRequest) {
     password = (body as { password?: string }).password ?? "";
   }
 
-  if (password === ADMIN_PASSWORD) {
+  if (verifyAdminPassword(password)) {
     const token = await createSessionJwt();
-    return NextResponse.json({ ok: true, token });
+    const res = NextResponse.json({ ok: true });
+    res.cookies.set(COOKIE_NAME, token, getCookieOptions());
+    return res;
   }
 
   return NextResponse.json({ ok: false, error: "wrong" }, { status: 401 });
