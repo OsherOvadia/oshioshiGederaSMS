@@ -28,6 +28,7 @@ Thumbs.db
 # Next.js
 .next/
 out/
+tsconfig.tsbuildinfo
 
 # Dependencies
 node_modules/
