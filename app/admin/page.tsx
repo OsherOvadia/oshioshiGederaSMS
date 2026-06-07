@@ -3,7 +3,8 @@ import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import { getAdminSession } from "@/lib/auth";
 import { createImportToken } from "@/lib/security";
-import { getDb, queryCustomers, mapRow, initDb } from "@/lib/db";
+import { getDb, queryCustomers, mapRow, initDb, type CustomerRow } from "@/lib/db";
+import { israelToday, toIsraelDateStr } from "@/lib/dates";
 import BroadcastForm from "./BroadcastForm";
 import UploadForm from "./UploadForm";
 import ResetDbForm from "./ResetDbForm";
@@ -23,7 +24,7 @@ function formatRegDate(created: string | null): string {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ msg?: string }>;
+  searchParams: Promise<{ msg?: string; filter?: string }>;
 }) {
   const ok = await getAdminSession();
   if (!ok) redirect("/login");
@@ -41,7 +42,7 @@ export default async function AdminPage({
     const db = getDb();
     const rows = await queryCustomers(
       db,
-      "SELECT phone, name, email, date_of_birth, wedding_day, city, active, created_at, received_message_at FROM customers ORDER BY active DESC, name ASC",
+      "SELECT phone, name, email, date_of_birth, wedding_day, city, active, created_at, received_message_at, unsubscribed_at FROM customers ORDER BY active DESC, name ASC",
       []
     );
     if (db.type === "sqlite") db.conn.close();
@@ -75,6 +76,22 @@ export default async function AdminPage({
   const params = await searchParams;
   const msg = params.msg ?? "";
 
+  // Daily filters (Israel local day). "Signed up today" = created today;
+  // "removed today" = currently inactive and unsubscribed/blocked today.
+  const today = israelToday();
+  const isSignupToday = (c: CustomerRow) => toIsraelDateStr(c.created_at) === today;
+  const isRemovedToday = (c: CustomerRow) => !c.active && toIsraelDateStr(c.unsubscribed_at) === today;
+  const signupTodayCount = customers.filter(isSignupToday).length;
+  const removedTodayCount = customers.filter(isRemovedToday).length;
+
+  const filter = params.filter === "signup_today" || params.filter === "unsub_today" ? params.filter : "";
+  const displayed =
+    filter === "signup_today"
+      ? customers.filter(isSignupToday)
+      : filter === "unsub_today"
+        ? customers.filter(isRemovedToday)
+        : customers;
+
   return (
     <div className="container admin-container" style={{ maxWidth: "900px" }}>
       <div style={{ direction: "rtl", textAlign: "right" }}>
@@ -107,8 +124,36 @@ export default async function AdminPage({
         <AdminStats signupsByDate={signupsByDate} cityCounts={cityCounts} />
 
         <h3 style={{ borderBottom: "2px solid #d32f2f", paddingBottom: "5px", display: "inline-block", marginBottom: "15px" }}>
-          רשימת לקוחות ({customers.length})
+          רשימת לקוחות ({displayed.length})
         </h3>
+
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "15px" }}>
+          {[
+            { key: "", label: `הכל (${customers.length})`, href: "/admin" },
+            { key: "signup_today", label: `נרשמו היום (${signupTodayCount})`, href: "/admin?filter=signup_today" },
+            { key: "unsub_today", label: `הוסרו היום (${removedTodayCount})`, href: "/admin?filter=unsub_today" },
+          ].map((f) => {
+            const active = filter === f.key;
+            return (
+              <Link
+                key={f.key || "all"}
+                href={f.href}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  border: "1px solid #d32f2f",
+                  background: active ? "#d32f2f" : "#fff",
+                  color: active ? "#fff" : "#d32f2f",
+                }}
+              >
+                {f.label}
+              </Link>
+            );
+          })}
+        </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead style={{ background: "#f5f5f5", position: "sticky", top: 0 }}>
@@ -126,7 +171,14 @@ export default async function AdminPage({
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
+              {displayed.length === 0 && (
+                <tr>
+                  <td colSpan={10} style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+                    אין תוצאות
+                  </td>
+                </tr>
+              )}
+              {displayed.map((c) => (
                 <tr key={c.phone} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "10px", textAlign: "right" }}>{c.name}</td>
                   <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.email || "-"}</td>

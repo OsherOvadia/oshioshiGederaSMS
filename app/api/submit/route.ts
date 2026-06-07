@@ -76,11 +76,11 @@ export async function POST(req: NextRequest) {
       db.type === "postgres"
         ? `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active)
            VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-           ON CONFLICT(phone) DO UPDATE SET active = TRUE, name = EXCLUDED.name, email = EXCLUDED.email,
+           ON CONFLICT(phone) DO UPDATE SET active = TRUE, unsubscribed_at = NULL, name = EXCLUDED.name, email = EXCLUDED.email,
            date_of_birth = EXCLUDED.date_of_birth, wedding_day = EXCLUDED.wedding_day, city = EXCLUDED.city`
         : `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active)
            VALUES ($1, $2, $3, $4, $5, $6, 1)
-           ON CONFLICT(phone) DO UPDATE SET active = 1, name = excluded.name, email = excluded.email,
+           ON CONFLICT(phone) DO UPDATE SET active = 1, unsubscribed_at = NULL, name = excluded.name, email = excluded.email,
            date_of_birth = excluded.date_of_birth, wedding_day = excluded.wedding_day, city = excluded.city`;
     await runDb(db, insertSql, [phone, name, email, dob, wedding, city]);
 

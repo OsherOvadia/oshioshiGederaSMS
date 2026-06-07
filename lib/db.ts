@@ -128,6 +128,9 @@ export async function initDb(): Promise<void> {
     await db.conn.query(
       "ALTER TABLE customers ADD COLUMN IF NOT EXISTS received_message_at TIMESTAMP"
     ).catch(() => {});
+    await db.conn.query(
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMP"
+    ).catch(() => {});
   } else {
     db.conn.exec(schema);
     try {
@@ -135,6 +138,9 @@ export async function initDb(): Promise<void> {
     } catch {}
     try {
       db.conn.prepare("ALTER TABLE customers ADD COLUMN received_message_at TEXT").run();
+    } catch {}
+    try {
+      db.conn.prepare("ALTER TABLE customers ADD COLUMN unsubscribed_at TEXT").run();
     } catch {}
   }
   if (db.type === "sqlite") db.conn.close();
@@ -151,12 +157,14 @@ export type CustomerRow = {
   active: boolean;
   created_at: string | null;
   received_message_at: string | null;
+  unsubscribed_at: string | null;
 };
 
 export function mapRow(r: Record<string, unknown>): CustomerRow {
   const active = r.active === true || r.active === 1;
   const created = r.created_at != null ? String(r.created_at) : null;
   const received_message_at = r.received_message_at != null ? String(r.received_message_at) : null;
+  const unsubscribed_at = r.unsubscribed_at != null ? String(r.unsubscribed_at) : null;
   return {
     phone: String(r.phone ?? ""),
     name: String(r.name ?? ""),
@@ -167,5 +175,6 @@ export function mapRow(r: Record<string, unknown>): CustomerRow {
     active,
     created_at: created,
     received_message_at,
+    unsubscribed_at,
   };
 }

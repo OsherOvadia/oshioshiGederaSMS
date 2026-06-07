@@ -31,20 +31,30 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const activeVal = action === "unblock";
   const setVal = db.type === "postgres" ? activeVal : activeVal ? 1 : 0;
+  const now = new Date().toISOString();
 
+  // Block: stamp unsubscribed_at (powers the "removed today" filter).
+  // Unblock: reactivate and clear the removal + received markers.
+  // Placeholders are numbered in textual order ($1, $2, …) with params in the
+  // same order, so this is correct under Postgres ($n) and the SQLite shim
+  // (which rewrites $n -> ? positionally).
+  const setClause = activeVal
+    ? "active = $1, unsubscribed_at = NULL, received_message_at = NULL"
+    : "active = $1, unsubscribed_at = $2";
+
+  const exactWhereParam = activeVal ? [setVal, formatted] : [setVal, now, formatted];
   const { rowCount } = await runDb(
     db,
-    "UPDATE customers SET active = $2 WHERE phone = $1",
-    [formatted, setVal]
+    `UPDATE customers SET ${setClause} WHERE phone = $${activeVal ? 2 : 3}`,
+    exactWhereParam
   );
   if (rowCount === 0 && clean) {
-    await runDb(db, "UPDATE customers SET active = $2 WHERE phone LIKE $1", [`%${clean}`, setVal]);
-  }
-  if (activeVal) {
-    await runDb(db, "UPDATE customers SET received_message_at = NULL WHERE phone = $1", [formatted]);
-    if (rowCount === 0 && clean) {
-      await runDb(db, "UPDATE customers SET received_message_at = NULL WHERE phone LIKE $1", [`%${clean}`]);
-    }
+    const likeParam = activeVal ? [setVal, `%${clean}`] : [setVal, now, `%${clean}`];
+    await runDb(
+      db,
+      `UPDATE customers SET ${setClause} WHERE phone LIKE $${activeVal ? 2 : 3}`,
+      likeParam
+    );
   }
   if (db.type === "sqlite") db.conn.close();
 
