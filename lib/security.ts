@@ -12,18 +12,26 @@ function getSecret(): string {
 }
 
 export function generateSecureToken(phone: string): string {
+  // 128-bit HMAC over the phone, keyed by the app secret.
+  return createHmac("sha256", getSecret()).update(phone).digest("hex").slice(0, 32);
+}
+
+/** Legacy 64-bit token (kept only so unsubscribe links in already-sent SMS still verify). */
+function legacySecureToken(phone: string): string {
   const data = `${phone}:${getSecret()}`;
   return createHmac("sha256", getSecret()).update(data).digest("hex").slice(0, 16);
 }
 
 export function verifyToken(phone: string, token: string): boolean {
-  const expected = generateSecureToken(phone);
-  if (expected.length !== token.length) return false;
-  try {
-    return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(token, "utf8"));
-  } catch {
-    return false;
-  }
+  const candidates = [generateSecureToken(phone), legacySecureToken(phone)];
+  return candidates.some((expected) => {
+    if (expected.length !== token.length) return false;
+    try {
+      return timingSafeEqual(Buffer.from(expected, "utf8"), Buffer.from(token, "utf8"));
+    } catch {
+      return false;
+    }
+  });
 }
 
 export function getAppSecret(): string {
