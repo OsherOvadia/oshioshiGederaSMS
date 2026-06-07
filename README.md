@@ -39,9 +39,15 @@ VIP club registration with SMS broadcast and birthday reminders. Refactored from
    | `ANDROID_SMS_GATEWAY_PASSWORD` | Yes* | SMS gateway password |
    | `ANDROID_SMS_GATEWAY_API_URL` | No | Default: `https://api.sms-gate.app/3rdparty/v1` |
    | `QSTASH_TOKEN` | Yes* | Upstash QStash token for broadcast/birthday SMS queue |
+   | `QSTASH_URL` | No | Only for QStash EU region (e.g. `https://eu1-xxxx.upstash.io`). Default: global host. |
+   | `UPSTASH_REDIS_REST_URL` | No* | Upstash Redis REST URL for distributed rate limiting. |
+   | `UPSTASH_REDIS_REST_TOKEN` | No* | Upstash Redis REST token. |
+   | `APP_URL` | No | Public base URL fallback for unsubscribe links / QStash callbacks. |
    | `CRON_SECRET` | Yes* | Secret for cron endpoint (e.g. `openssl rand -hex 24`) |
 
    \* Required if you use SMS or cron.
+
+   \* Rate limiting falls back to per-instance in-memory storage when Upstash Redis is not configured. On Vercel (serverless), set the Upstash Redis vars so limits hold across instances and cold starts.
 
 3. **Database**: Use **Postgres** only on Vercel (e.g. Vercel Postgres). SQLite is not supported in serverless.
 
