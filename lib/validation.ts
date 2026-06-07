@@ -16,3 +16,17 @@ export function isValidEmail(email: string): boolean {
 export function isValidPhone(phone: string): boolean {
   return phone.length >= 10 && phone.startsWith("+");
 }
+
+/**
+ * Normalize an admin-supplied phone for block/unblock lookups.
+ * Returns both the `formatted` (+E.164-ish, capped at 20 chars) and the
+ * digits-only `clean` form used for a fallback LIKE match.
+ */
+export function normalizeAdminPhone(phone: string): { formatted: string; clean: string } {
+  let formatted = phone.startsWith(" ") ? "+" + phone.trimStart() : phone;
+  const clean = formatted.replace(/\D/g, "");
+  if (clean.startsWith("972")) formatted = "+" + clean;
+  else if (!formatted.startsWith("+")) formatted = "+" + clean;
+  formatted = formatted.slice(0, 20);
+  return { formatted, clean };
+}
