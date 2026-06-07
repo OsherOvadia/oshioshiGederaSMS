@@ -9,7 +9,7 @@ export async function GET() {
   if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const ip = await getClientIp();
-  const { ok: rateOk } = checkRateLimit(ip, "export-csv", LIMITS.exportCsv.max);
+  const { ok: rateOk } = await checkRateLimit(ip, "export-csv", LIMITS.exportCsv.max);
   if (!rateOk) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const db = getDb();

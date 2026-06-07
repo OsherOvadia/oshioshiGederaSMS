@@ -11,7 +11,7 @@ const SMS_URL = (process.env.ANDROID_SMS_GATEWAY_API_URL || "https://api.sms-gat
 
 export async function POST(req: NextRequest) {
   const ip = await getClientIp();
-  const { ok } = checkRateLimit(ip, "send_sms_task", LIMITS.sendSmsTask.max);
+  const { ok } = await checkRateLimit(ip, "send_sms_task", LIMITS.sendSmsTask.max);
   if (!ok) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

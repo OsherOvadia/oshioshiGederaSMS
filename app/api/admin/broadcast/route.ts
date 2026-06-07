@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (!sessionOk && !tokenOk) return respond(req, false, "הפעולה נכשלה. נא לרענן את הדף ולנסות שוב.", false);
 
     const ip = await getClientIp();
-    const { ok: rateOk } = checkRateLimit(ip, "broadcast", LIMITS.broadcast.max);
+    const { ok: rateOk } = await checkRateLimit(ip, "broadcast", LIMITS.broadcast.max);
     if (!rateOk) return respond(req, false, "יותר מדי בקשות", sessionOk);
 
     const message = (form.get("message") as string)?.trim() ?? "";

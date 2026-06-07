@@ -25,7 +25,7 @@ function jsonResponse(ok: boolean, error?: SubmitErrorKey) {
 
 export async function POST(req: NextRequest) {
   const ip = await getClientIp();
-  const { ok } = checkRateLimit(ip, "submit", LIMITS.submit.max);
+  const { ok } = await checkRateLimit(ip, "submit", LIMITS.submit.max);
   if (!ok) {
     if (wantsJson(req)) return jsonResponse(false, "rate");
     return NextResponse.redirect(new URL("/?error=rate", req.url));

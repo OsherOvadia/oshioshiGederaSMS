@@ -1,37 +1,62 @@
-// In-memory rate limit (per serverless instance). For production at scale consider Upstash Redis.
-const store = new Map<string, { count: number; resetAt: number }>();
-const WINDOW_MS = 60 * 1000; // 1 minute
+import { Redis } from "@upstash/redis";
 
-function getKey(ip: string, limitKey: string): string {
-  return `${ip}:${limitKey}`;
+const WINDOW_MS = 60 * 1000; // 1 minute window
+
+// In-memory fallback (per serverless instance) — used only when Upstash is not configured.
+const memStore = new Map<string, { count: number; resetAt: number }>();
+
+let redisClient: Redis | null | undefined;
+function getRedis(): Redis | null {
+  if (redisClient !== undefined) return redisClient;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  redisClient = url && token ? new Redis({ url, token }) : null;
+  return redisClient;
 }
 
-function cleanup(): void {
-  const now = Date.now();
-  Array.from(store.entries()).forEach(([k, v]) => {
-    if (v.resetAt < now) store.delete(k);
+function cleanupMemory(now: number): void {
+  Array.from(memStore.entries()).forEach(([k, v]) => {
+    if (v.resetAt < now) memStore.delete(k);
   });
 }
 
-export function checkRateLimit(
+function checkMemory(key: string, maxRequests: number): { ok: boolean; remaining: number } {
+  const now = Date.now();
+  if (memStore.size > 10000) cleanupMemory(now);
+  let entry = memStore.get(key);
+  if (!entry || entry.resetAt < now) {
+    entry = { count: 0, resetAt: now + WINDOW_MS };
+    memStore.set(key, entry);
+  }
+  entry.count += 1;
+  return { ok: entry.count <= maxRequests, remaining: Math.max(0, maxRequests - entry.count) };
+}
+
+export async function checkRateLimit(
   ip: string,
   limitKey: string,
   maxRequests: number
-): { ok: boolean; remaining: number } {
-  if (store.size > 10000) cleanup();
-  const key = getKey(ip, limitKey);
-  const now = Date.now();
-  let entry = store.get(key);
-  if (!entry || entry.resetAt < now) {
-    entry = { count: 0, resetAt: now + WINDOW_MS };
-    store.set(key, entry);
+): Promise<{ ok: boolean; remaining: number }> {
+  const key = `rl:${ip}:${limitKey}`;
+  const redis = getRedis();
+  if (!redis) return checkMemory(key, maxRequests);
+  try {
+    // INCR + PEXPIRE in a single pipeline = one round-trip, executed atomically
+    // server-side. This guarantees the key always gets a TTL (avoiding the
+    // crash-between-INCR-and-PEXPIRE window that would leave a key with no
+    // expiry, permanently locking out that ip+limitKey).
+    const pipe = redis.pipeline();
+    pipe.incr(key);
+    pipe.pexpire(key, WINDOW_MS);
+    const [count] = (await pipe.exec()) as [number, number];
+    return { ok: count <= maxRequests, remaining: Math.max(0, maxRequests - count) };
+  } catch {
+    // Redis hiccup — degrade gracefully to in-memory rather than locking users out.
+    return checkMemory(key, maxRequests);
   }
-  entry.count += 1;
-  const remaining = Math.max(0, maxRequests - entry.count);
-  return { ok: entry.count <= maxRequests, remaining };
 }
 
-// Predefined limits (same as Flask: 200/day, 50/hour for general; specific for submit, login, etc.)
+// Predefined limits (same windows as the original Flask app).
 export const LIMITS = {
   home: { max: 20, window: "minute" },
   submit: { max: 5, window: "minute" },
