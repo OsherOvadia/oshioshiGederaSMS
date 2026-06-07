@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, queryCustomers } from "@/lib/db";
 import { getAppSecret } from "@/lib/security";
 import { getBirthMonth } from "@/lib/dates";
+import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -44,28 +45,24 @@ async function handleCron(req: NextRequest) {
     }
   }
 
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : req.nextUrl.origin;
+  const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);
   const targetEndpoint = `${baseUrl}/api/send_sms_task`;
   const secret = getAppSecret();
   let sentCount = 0;
 
-  if (QSTASH_TOKEN) {
+  if (QSTASH_TOKEN && baseUrl) {
     for (const [phone, name] of birthdaysFound) {
       const msg = `היי ${name}, חוגג/ת יום הולדת החודש? 🎂\nמזל טוב! מחכה לך הטבה מיוחדת ב-Sushi VIP. בואו לחגוג איתנו! 🍣`;
-      try {
-        await fetch(`https://qstash.upstash.io/v2/publish/${targetEndpoint}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${QSTASH_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ phone, message: msg, secret }),
-          signal: AbortSignal.timeout(5000),
-        });
-        sentCount += 1;
-      } catch (e) {
-        console.error("Failed to queue birthday sms for", phone, e);
-      }
+      const r = await publishSmsTask({
+        targetEndpoint,
+        phone,
+        message: msg,
+        secret,
+        token: QSTASH_TOKEN,
+        timeoutMs: 5000,
+      });
+      if (r.ok) sentCount += 1;
+      else console.error("Failed to queue birthday sms for", phone, r.error);
     }
   }
 

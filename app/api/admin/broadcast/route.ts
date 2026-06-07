@@ -5,30 +5,9 @@ import { initDb, getDb, queryCustomers } from "@/lib/db";
 import { getAppSecret } from "@/lib/security";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
+import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
 
-/** QStash publish base: same as Python (https://qstash.upstash.io) or QSTASH_URL origin for EU. */
-function getQstashPublishBase(): string {
-  const raw = process.env.QSTASH_URL;
-  if (!raw || !String(raw).trim()) return "https://qstash.upstash.io";
-  try {
-    const u = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-    return u.origin;
-  } catch {
-    return "https://qstash.upstash.io";
-  }
-}
-const QSTASH_PUBLISH_BASE = getQstashPublishBase();
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
-
-function normalizeBaseUrl(raw: string | undefined): string {
-  if (!raw || typeof raw !== "string") return "";
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  if (!trimmed) return "";
-  if (/undefined/i.test(trimmed)) return "";
-  if (trimmed.startsWith("https://")) return trimmed;
-  if (trimmed.startsWith("http://")) return trimmed;
-  return `https://${trimmed}`;
-}
 
 function wantsJson(req: NextRequest): boolean {
   return req.headers.get("accept")?.includes("application/json") ?? false;
@@ -81,13 +60,9 @@ export async function POST(req: NextRequest) {
       return respond(req, false, "אין לקוחות פעילים לשליחה.", sessionOk);
     }
 
-    // Match Python: base from request first (request.url_root.rstrip('/')), then env fallbacks
+    // Request origin first (matches Python url_root), then env fallbacks.
     const requestOrigin = req.url ? new URL(req.url).origin : req.nextUrl?.origin ?? "";
-    const baseUrl =
-      normalizeBaseUrl(requestOrigin) ||
-      normalizeBaseUrl(process.env.VERCEL_URL) ||
-      normalizeBaseUrl(process.env.APP_URL) ||
-      normalizeBaseUrl(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+    const baseUrl = resolveAppBaseUrl(requestOrigin);
     const targetEndpoint = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/api/send_sms_task` : "";
     if (!targetEndpoint.startsWith("https://") || /undefined/i.test(targetEndpoint)) {
       return respond(
@@ -110,38 +85,20 @@ export async function POST(req: NextRequest) {
       return respond(req, false, "אין מספרי טלפון תקינים לשליחה.", sessionOk);
     }
 
-    // Match Python: single URL string, raw POST (requests.post(url, headers=..., json=...))
-    const qstashUrl = `${QSTASH_PUBLISH_BASE}/v2/publish/${targetEndpoint}`;
-    const authHeader = `Bearer ${QSTASH_TOKEN}`;
-
     const CHUNK = 8;
     let count = 0;
     let lastError: string | null = null;
     for (let i = 0; i < phones.length; i += CHUNK) {
       const chunk = phones.slice(i, i + CHUNK);
       const results = await Promise.all(
-        chunk.map(async (phone) => {
-          try {
-            const res = await fetch(qstashUrl, {
-              method: "POST",
-              headers: {
-                Authorization: authHeader,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ phone, message, secret }),
-              signal: AbortSignal.timeout(12000),
-            });
-            if (res.ok) return true;
-            const text = await res.text();
-            lastError = `QStash ${res.status}: ${text.slice(0, 120)}`;
-            return false;
-          } catch (e) {
-            lastError = e instanceof Error ? e.message : String(e);
-            return false;
-          }
-        })
+        chunk.map((phone) =>
+          publishSmsTask({ targetEndpoint, phone, message, secret, token: QSTASH_TOKEN! })
+        )
       );
-      count += results.filter(Boolean).length;
+      for (const r of results) {
+        if (r.ok) count += 1;
+        else if (r.error) lastError = r.error;
+      }
     }
 
     if (count === 0) {
