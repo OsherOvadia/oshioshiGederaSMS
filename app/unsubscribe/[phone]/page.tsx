@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { getDb, runDb, initDb } from "@/lib/db";
 import { verifyToken } from "@/lib/security";
+import { deactivateByPhone } from "@/lib/unsubscribe";
 import Logo from "@/app/Logo";
 
 export const dynamic = "force-dynamic";
@@ -26,22 +26,7 @@ export default async function UnsubscribePage({
   }
 
   try {
-    await initDb();
-    const db = getDb();
-    if (db.type === "postgres") {
-      await runDb(
-        db,
-        "UPDATE customers SET active = FALSE WHERE phone = $1 OR REPLACE(phone, '+', '') = $2",
-        [withPlus, digitsOnly]
-      );
-    } else {
-      await runDb(
-        db,
-        "UPDATE customers SET active = 0 WHERE phone = $1 OR REPLACE(phone, '+', '') = $2",
-        [withPlus, digitsOnly]
-      );
-    }
-    if (db.type === "sqlite") db.conn.close();
+    await deactivateByPhone(withPlus);
   } catch (e) {
     console.error("Unsubscribe error:", e);
   }
