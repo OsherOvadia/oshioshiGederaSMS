@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, queryCustomers } from "@/lib/db";
 import { getAppSecret } from "@/lib/security";
+import { getBirthMonth } from "@/lib/dates";
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -37,15 +38,9 @@ async function handleCron(req: NextRequest) {
 
   const birthdaysFound: [string, string][] = [];
   for (const row of rows) {
-    const dobStr = row.date_of_birth as string;
-    if (!dobStr) continue;
-    try {
-      const dobDate = new Date(dobStr);
-      if (dobDate.getMonth() + 1 === currentMonth) {
-        birthdaysFound.push([String(row.phone), String(row.name ?? "")]);
-      }
-    } catch {
-      // skip invalid date
+    const month = getBirthMonth(row.date_of_birth as string);
+    if (month === currentMonth) {
+      birthdaysFound.push([String(row.phone), String(row.name ?? "")]);
     }
   }
 
