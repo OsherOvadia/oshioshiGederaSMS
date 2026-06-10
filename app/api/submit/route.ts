@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, runDb, queryCustomers, initDb } from "@/lib/db";
-import { formatPhone, isValidEmail, isValidPhone } from "@/lib/validation";
+import { parseSubmitFields, type SubmitError } from "@/lib/submit-form";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
 
-const ERROR_KEYS = [
-  "missing",
-  "invalid_phone",
-  "invalid_email",
-  "already_registered",
-  "system",
-  "rate",
-] as const;
-export type SubmitErrorKey = (typeof ERROR_KEYS)[number];
+export type SubmitErrorKey = SubmitError | "already_registered" | "system" | "rate";
 
 function wantsJson(req: NextRequest): boolean {
   const accept = req.headers.get("accept") ?? "";
@@ -32,27 +24,20 @@ export async function POST(req: NextRequest) {
   }
 
   const form = await req.formData();
-  const name = (form.get("name") as string)?.trim().slice(0, 100) ?? "";
-  const rawPhone = (form.get("phone") as string)?.trim().slice(0, 20) ?? "";
-  const email = (form.get("email") as string)?.trim().slice(0, 255) ?? "";
-  const dob = (form.get("date_of_birth") as string)?.trim() ?? "";
-  const wedding = (form.get("wedding_day") as string)?.trim() ?? "";
-  const city = (form.get("city") as string)?.trim().slice(0, 50) ?? "";
+  const parsed = parseSubmitFields({
+    name: form.get("name"),
+    phone: form.get("phone"),
+    email: form.get("email"),
+    date_of_birth: form.get("date_of_birth"),
+    wedding_day: form.get("wedding_day"),
+    city: form.get("city"),
+  });
 
-  if (!name || !rawPhone || !email || !dob || !wedding || !city) {
-    if (wantsJson(req)) return jsonResponse(false, "missing");
-    return NextResponse.redirect(new URL("/?error=missing", req.url));
+  if (!parsed.ok) {
+    if (wantsJson(req)) return jsonResponse(false, parsed.error);
+    return NextResponse.redirect(new URL(`/?error=${parsed.error}`, req.url));
   }
-
-  const phone = formatPhone(rawPhone);
-  if (!isValidPhone(phone)) {
-    if (wantsJson(req)) return jsonResponse(false, "invalid_phone");
-    return NextResponse.redirect(new URL("/?error=invalid_phone", req.url));
-  }
-  if (!isValidEmail(email)) {
-    if (wantsJson(req)) return jsonResponse(false, "invalid_email");
-    return NextResponse.redirect(new URL("/?error=invalid_email", req.url));
-  }
+  const { name, phone, email, dob, wedding, city } = parsed.fields;
 
   try {
     await initDb();
