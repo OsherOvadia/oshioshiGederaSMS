@@ -8,7 +8,6 @@ import { israelToday, toIsraelDateStr } from "@/lib/dates";
 import BroadcastForm from "./BroadcastForm";
 import UploadForm from "./UploadForm";
 import ResetDbForm from "./ResetDbForm";
-import TestMessageForm from "./TestMessageForm";
 
 const AdminStats = nextDynamic(() => import("./AdminStats"), { ssr: true, loading: () => <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>טוען סטטיסטיקות...</div> });
 
@@ -118,7 +117,6 @@ export default async function AdminPage({
           <BroadcastForm importToken={importToken} activeCount={activeCount} newCount={newCount} />
           {msg && <p style={{ color: "blue", fontWeight: "bold", marginTop: "10px" }}>{msg}</p>}
           <UploadForm importToken={importToken} />
-          <TestMessageForm importToken={importToken} />
         </div>
 
         <AdminStats signupsByDate={signupsByDate} cityCounts={cityCounts} />
