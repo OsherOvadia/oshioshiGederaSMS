@@ -3,22 +3,27 @@
 import { useState, useRef } from "react";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  missing: "אנא מלא את כל שדות החובה",
+  missing: "אנא מלאו את כל שדות החובה",
   invalid_phone: "מספר טלפון לא תקין",
   invalid_email: 'כתובת דוא"ל לא תקינה',
-  already_registered: "⚠️ אתה כבר רשום למועדון! המספר שלך כבר קיים במערכת.",
+  already_registered: "אתם כבר רשומים למועדון! המספר שלכם כבר קיים במערכת.",
   system: "תקלה במערכת",
-  rate: "יותר מדי בקשות. נסה שוב מאוחר יותר.",
+  rate: "יותר מדי בקשות. נסו שוב מאוחר יותר.",
 };
 
-export default function VIPForm() {
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+// Optional business contact for the success screen; buttons hide when unset.
+const BUSINESS_PHONE = process.env.NEXT_PUBLIC_BUSINESS_PHONE ?? "";
+const WHATSAPP_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? "";
+
+export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setFeedback(null);
+    setError(null);
     const form = formRef.current;
     if (!form) return;
 
@@ -33,60 +38,112 @@ export default function VIPForm() {
       const data = await res.json();
 
       if (data.success) {
-        setFeedback({ type: "success", message: "✅ נרשמת בהצלחה!" });
-        form.reset();
+        setDone(true);
       } else if (data.error && ERROR_MESSAGES[data.error]) {
-        setFeedback({ type: "error", message: ERROR_MESSAGES[data.error] });
+        setError(ERROR_MESSAGES[data.error]);
       } else {
-        setFeedback({ type: "error", message: "שגיאה. נסה שוב." });
+        setError("שגיאה. נסו שוב.");
       }
     } catch {
-      setFeedback({ type: "error", message: "תקלה במערכת. נסה שוב." });
+      setError("תקלה במערכת. נסו שוב.");
     } finally {
       setLoading(false);
     }
   }
 
+  if (done) {
+    return (
+      <div className="success-view" role="status">
+        <div className="success-check" aria-hidden="true">
+          ✓
+        </div>
+        <h3>איזה כיף שהצטרפת! 🎉</h3>
+        <p>מעכשיו ההטבות, מבצעי ה-1+1 והפינוקים מגיעים ישירות אליך ב-SMS.</p>
+        {(BUSINESS_PHONE || WHATSAPP_PHONE) && (
+          <div className="success-actions">
+            {BUSINESS_PHONE && (
+              <a className="btn-ghost" href={`tel:${BUSINESS_PHONE}`}>
+                📞 חיוג למסעדה
+              </a>
+            )}
+            {WHATSAPP_PHONE && (
+              <a
+                className="btn-ghost"
+                href={`https://wa.me/${WHATSAPP_PHONE}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                💬 וואטסאפ
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      <form ref={formRef} onSubmit={handleSubmit}>
+      <form ref={formRef} onSubmit={handleSubmit} aria-describedby="form-feedback">
         <div className="form-group">
           <label htmlFor="name">שם מלא *</label>
-          <input type="text" id="name" name="name" placeholder="שמך" required maxLength={100} />
+          <input type="text" id="name" name="name" placeholder="שמך" required maxLength={100} autoComplete="name" />
         </div>
         <div className="form-group">
-          <label htmlFor="phone">טלפון *</label>
-          <input type="tel" id="phone" name="phone" placeholder="050-1234567" required maxLength={20} />
+          <label htmlFor="phone">טלפון נייד *</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            className="input-ltr"
+            dir="ltr"
+            placeholder="050-1234567"
+            required
+            maxLength={20}
+            inputMode="tel"
+            autoComplete="tel"
+          />
         </div>
         <div className="form-group">
           <label htmlFor="email">דוא&quot;ל *</label>
-          <input type="email" id="email" name="email" placeholder="example@email.com" required />
+          <input
+            type="email"
+            id="email"
+            name="email"
+            className="input-ltr"
+            dir="ltr"
+            placeholder="example@email.com"
+            required
+            autoComplete="email"
+          />
         </div>
         <div className="form-group">
-          <label htmlFor="dob">תאריך לידה *</label>
-          <input type="date" id="dob" name="date_of_birth" required />
+          <label htmlFor="dob">
+            תאריך לידה * <span className="label-hint">— כדי שנדע מתי לפנק 🎂</span>
+          </label>
+          <input type="date" id="dob" name="date_of_birth" required autoComplete="bday" />
         </div>
         <div className="form-group">
-          <label htmlFor="wedding">יום חתונה *</label>
-          <input type="date" id="wedding" name="wedding_day" required />
+          <label htmlFor="wedding">
+            יום נישואין <span className="label-hint">— לא חובה, נדאג לפינוק זוגי 💍</span>
+          </label>
+          <input type="date" id="wedding" name="wedding_day" />
         </div>
         <div className="form-group">
           <label htmlFor="city">עיר *</label>
           <input type="text" id="city" name="city" placeholder="גדרה" maxLength={50} required />
         </div>
         <button type="submit" disabled={loading}>
-          {loading ? "שולח..." : "הצטרף למועדון"}
+          {loading ? "שולח..." : "אני בפנים 🍣"}
         </button>
       </form>
-      {feedback && (
-        <p
-          className={feedback.type === "success" ? "success" : "error"}
-          style={{ marginTop: "14px", marginBottom: 0 }}
-          role="alert"
-        >
-          {feedback.message}
-        </p>
-      )}
+      <p id="form-feedback" role="alert" aria-live="assertive" className="error" style={{ marginTop: "14px", marginBottom: 0 }}>
+        {error}
+      </p>
+      <p className="consent">
+        בלחיצה על &quot;אני בפנים&quot; אני מאשר/ת קבלת הודעות ועדכונים פרסומיים ב-SMS ממועדון הלקוחות.
+        ניתן להסיר את עצמכם בכל עת בהשבת &quot;{unsubKeyword}&quot; לכל הודעה או בלחיצה על קישור ההסרה שבה.
+      </p>
     </>
   );
 }
