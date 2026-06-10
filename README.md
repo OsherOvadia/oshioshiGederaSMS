@@ -58,7 +58,7 @@ VIP club registration with SMS broadcast and birthday reminders. Refactored from
 
 5. **Deploy**: Push to the connected branch; Vercel will build and deploy. The first deploy will run `npm run build`; ensure all required env vars are set so DB and APIs work.
 
-6. **Static assets**: Commit the `public/` folder (logo and bg images) so they are deployed. The app expects `logo.png` and `bg1.png`–`bg7.png` in `public/`.
+6. **Static assets**: Commit the `public/` folder (logo and hero images) so they are deployed. The app expects `logo.png` in `public/` and `bg1.jpg`–`bg7.jpg` in `public/hero/` (generated from raw originals by `node scripts/optimize-heroes.mjs`; the raw sources live only in git history).
 
 ## Routes (unchanged logic)
 
@@ -80,4 +80,4 @@ VIP club registration with SMS broadcast and birthday reminders. Refactored from
 
 ## Static assets
 
-Put `logo.png` and `bg1.png`–`bg5.png` (and optional `bg2`–`bg5`) in the `public/` folder.
+Put `logo.png` in the `public/` folder. The landing-page slideshow reads `public/hero/bg1.jpg`–`bg7.jpg`, generated from raw photos with `node scripts/optimize-heroes.mjs` (drop the raw `bg1.png`…`bg7.png`/`bg3.jpg` originals into `public/` first, or restore them from git history).
