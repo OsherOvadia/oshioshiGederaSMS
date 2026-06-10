@@ -125,7 +125,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         </div>
         <div className="form-group">
           <label htmlFor="wedding">
-            יום נישואין <span className="label-hint">— לא חובה, נדאג לפינוק זוגי 💍</span>
+            יום נישואין <span className="label-hint">— לא חובה, כדי שנוכל לפנק גם ביום הנישואין 💍</span>
           </label>
           <input type="date" id="wedding" name="wedding_day" />
         </div>

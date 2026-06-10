@@ -41,10 +41,10 @@ export default function HomePage() {
               <span className="benefit-icon" aria-hidden="true">
                 {b.icon}
               </span>
-              <span>
+              <div>
                 <span className="benefit-title">{b.title}</span>
                 <p className="benefit-text">{b.text}</p>
-              </span>
+              </div>
             </li>
           ))}
         </ul>
