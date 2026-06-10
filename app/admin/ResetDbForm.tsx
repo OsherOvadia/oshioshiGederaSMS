@@ -1,35 +1,58 @@
 "use client";
 
-type Props = { importToken: string };
+import { useState } from "react";
 
-export default function ResetDbForm({ importToken }: Props) {
+const CONFIRM_WORD = "מחיקה";
+
+export default function ResetDbForm({ importToken }: { importToken: string }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const armed = typed.trim() === CONFIRM_WORD;
+
+  if (!open) {
+    return (
+      <button type="button" className="btn-danger" style={{ width: "auto" }} onClick={() => setOpen(true)}>
+        איפוס מאגר (מחיקת כל הלקוחות)…
+      </button>
+    );
+  }
+
   return (
     <form
       action="/api/admin/reset-db"
       method="POST"
-      style={{ display: "inline" }}
       onSubmit={(e) => {
-        if (!confirm("לאפס את מאגר הלקוחות לגמרי? כל אנשי הקשר יימחקו.")) {
-          e.preventDefault();
-        }
+        if (!armed) e.preventDefault();
       }}
     >
       <input type="hidden" name="import_token" value={importToken} />
-      <button
-        type="submit"
-        className="admin-btn-reset"
-        style={{
-          background: "#d32f2f",
-          color: "white",
-          padding: "8px 12px",
-          borderRadius: "6px",
-          border: "none",
-          cursor: "pointer",
-          fontSize: "14px",
-        }}
-      >
-        איפוס מאגר (0 אנשי קשר)
-      </button>
+      <p style={{ fontSize: "13px", fontWeight: 600, color: "#b71c1c" }}>
+        פעולה זו תמחק את כל הלקוחות לצמיתות. אין שחזור. כדי להמשיך, הקלידו: <strong>{CONFIRM_WORD}</strong>
+      </p>
+      <input
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        placeholder={CONFIRM_WORD}
+        aria-label={`הקלידו ${CONFIRM_WORD} לאישור`}
+        autoComplete="off"
+        style={{ maxWidth: "200px" }}
+      />
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <button type="submit" className="btn-danger" disabled={!armed} style={{ width: "auto" }}>
+          מחק את כל הלקוחות
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          style={{ width: "auto" }}
+          onClick={() => {
+            setOpen(false);
+            setTyped("");
+          }}
+        >
+          ביטול
+        </button>
+      </div>
     </form>
   );
 }
