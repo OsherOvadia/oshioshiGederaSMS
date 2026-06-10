@@ -1,5 +1,6 @@
 // One-shot preprocessor: the committed originals are 1.2-17MB each. next/image
 // optimizes at request time but works from these sources, so shrink them first.
+// Re-running requires the raw bgN.png/bg3.jpg originals in public/ (removed from git in Task 3; restore from git history if needed).
 import sharp from "sharp";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
