@@ -15,9 +15,9 @@ const SLIDES = [
 const INTERVAL_MS = 7000;
 
 /**
- * Crossfading background slideshow. Only the current and next slides are
- * mounted, so the next image preloads during the current slide's 7s on
- * screen and the other five cost nothing. Decorative: aria-hidden.
+ * Crossfading background slideshow. The previous, current, and next slides
+ * stay mounted so the outgoing slide fades out (true crossfade) while the
+ * next preloads during the current slide's 7s on screen. Decorative: aria-hidden.
  */
 export default function HeroSlideshow() {
   const [index, setIndex] = useState(0);
@@ -30,11 +30,12 @@ export default function HeroSlideshow() {
   }, []);
 
   const next = (index + 1) % SLIDES.length;
+  const prev = (index + SLIDES.length - 1) % SLIDES.length;
 
   return (
     <div className="hero-bg" aria-hidden="true">
       {SLIDES.map((src, i) =>
-        i !== index && i !== next ? null : (
+        i !== index && i !== next && i !== prev ? null : (
           <div key={src} className="hero-slide" data-active={i === index}>
             <Image
               src={src}
