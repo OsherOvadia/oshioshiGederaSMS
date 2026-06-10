@@ -5,11 +5,20 @@ import { getAdminSession } from "@/lib/auth";
 import { createImportToken } from "@/lib/security";
 import { getDb, queryCustomers, mapRow, initDb, type CustomerRow } from "@/lib/db";
 import { israelToday, toIsraelDateStr } from "@/lib/dates";
+import { computeKpis } from "@/lib/kpis";
 import BroadcastForm from "./BroadcastForm";
 import UploadForm from "./UploadForm";
 import ResetDbForm from "./ResetDbForm";
+import CustomerTable, { type CustomerView } from "./CustomerTable";
 
-const AdminStats = nextDynamic(() => import("./AdminStats"), { ssr: true, loading: () => <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>טוען סטטיסטיקות...</div> });
+const AdminStats = nextDynamic(() => import("./AdminStats"), {
+  ssr: true,
+  loading: () => (
+    <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#666" }}>
+      טוען סטטיסטיקות...
+    </div>
+  ),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +44,7 @@ export default async function AdminPage({
     importToken = "";
   }
 
-  let customers: Awaited<ReturnType<typeof mapRow>>[] = [];
+  let customers: CustomerRow[] = [];
   try {
     await initDb();
     const db = getDb();
@@ -51,15 +60,12 @@ export default async function AdminPage({
     redirect("/login?error=system");
   }
 
-  let activeCount = 0;
-  let newCount = 0;
+  const today = israelToday();
+  const kpis = computeKpis(customers, today);
+
   const byDate: Record<string, number> = {};
   const byCity: Record<string, number> = {};
   for (const c of customers) {
-    if (c.active) {
-      activeCount++;
-      if (!c.received_message_at) newCount++;
-    }
     const d = c.created_at ? new Date(c.created_at).toISOString().slice(0, 10) : "";
     if (d) byDate[d] = (byDate[d] ?? 0) + 1;
     const city = (c.city ?? "").trim() || "ללא עיר";
@@ -75,9 +81,6 @@ export default async function AdminPage({
   const params = await searchParams;
   const msg = params.msg ?? "";
 
-  // Daily filters (Israel local day). "Signed up today" = created today;
-  // "removed today" = currently inactive and unsubscribed/blocked today.
-  const today = israelToday();
   const isSignupToday = (c: CustomerRow) => toIsraelDateStr(c.created_at) === today;
   const isRemovedToday = (c: CustomerRow) => !c.active && toIsraelDateStr(c.unsubscribed_at) === today;
   const signupTodayCount = customers.filter(isSignupToday).length;
@@ -91,8 +94,20 @@ export default async function AdminPage({
         ? customers.filter(isRemovedToday)
         : customers;
 
+  const customerViews: CustomerView[] = displayed.map((c) => ({
+    phone: c.phone,
+    name: c.name,
+    email: c.email,
+    date_of_birth: c.date_of_birth,
+    wedding_day: c.wedding_day,
+    city: c.city,
+    active: c.active,
+    regDate: formatRegDate(c.created_at),
+    isNew: c.active && !c.received_message_at,
+  }));
+
   return (
-    <div className="container admin-container" style={{ maxWidth: "900px" }}>
+    <div className="container admin-container">
       <div style={{ direction: "rtl", textAlign: "right" }}>
         <div className="admin-header">
           <h2 className="admin-title">ניהול לקוחות 🍣</h2>
@@ -105,17 +120,39 @@ export default async function AdminPage({
             >
               📊 ייצוא CSV
             </Link>
-            <ResetDbForm importToken={importToken} />
             <Link href="/api/logout" className="admin-btn admin-btn-logout">
               יציאה
             </Link>
           </div>
         </div>
 
+        <div className="kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-value">{kpis.active}</div>
+            <div className="kpi-label">לקוחות פעילים</div>
+            <div className="kpi-sub">מתוך {kpis.total} רשומים</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-value">{kpis.newLast7}</div>
+            <div className="kpi-label">חדשים ב-7 ימים</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-value">{kpis.removedLast30}</div>
+            <div className="kpi-label">הוסרו ב-30 יום</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-value">{kpis.neverMessaged}</div>
+            <div className="kpi-label">טרם קיבלו הודעה</div>
+          </div>
+        </div>
+
         <div className="admin-card">
-          <h3 style={{ marginTop: 0 }}>📢 שליחת הודעה ({activeCount} פעילים)</h3>
-          <BroadcastForm importToken={importToken} activeCount={activeCount} newCount={newCount} />
-          {msg && <p style={{ color: "blue", fontWeight: "bold", marginTop: "10px" }}>{msg}</p>}
+          <h3 style={{ marginTop: 0 }}>📢 שליחת הודעה</h3>
+          <BroadcastForm importToken={importToken} activeCount={kpis.active} newCount={kpis.neverMessaged} />
+          {msg && <p style={{ color: "#1565c0", fontWeight: "bold", marginTop: "10px" }}>{msg}</p>}
+        </div>
+
+        <div className="admin-card">
           <UploadForm importToken={importToken} />
         </div>
 
@@ -125,97 +162,24 @@ export default async function AdminPage({
           רשימת לקוחות ({displayed.length})
         </h3>
 
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "15px" }}>
+        <div className="filter-chips">
           {[
             { key: "", label: `הכל (${customers.length})`, href: "/admin" },
             { key: "signup_today", label: `נרשמו היום (${signupTodayCount})`, href: "/admin?filter=signup_today" },
             { key: "unsub_today", label: `הוסרו היום (${removedTodayCount})`, href: "/admin?filter=unsub_today" },
-          ].map((f) => {
-            const active = filter === f.key;
-            return (
-              <Link
-                key={f.key || "all"}
-                href={f.href}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "20px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  border: "1px solid #d32f2f",
-                  background: active ? "#d32f2f" : "#fff",
-                  color: active ? "#fff" : "#d32f2f",
-                }}
-              >
-                {f.label}
-              </Link>
-            );
-          })}
+          ].map((f) => (
+            <Link key={f.key || "all"} href={f.href} className="filter-chip" data-active={filter === f.key}>
+              {f.label}
+            </Link>
+          ))}
         </div>
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead style={{ background: "#f5f5f5", position: "sticky", top: 0 }}>
-              <tr style={{ borderBottom: "2px solid #d32f2f" }}>
-                <th style={{ padding: "10px", textAlign: "right" }}>שם</th>
-                <th style={{ padding: "10px", textAlign: "right" }}>דוא&quot;ל</th>
-                <th style={{ padding: "10px", textAlign: "right" }}>טלפון</th>
-                <th style={{ padding: "10px", textAlign: "center" }}>תאריך לידה</th>
-                <th style={{ padding: "10px", textAlign: "center" }}>יום חתונה</th>
-                <th style={{ padding: "10px", textAlign: "right" }}>עיר</th>
-                <th style={{ padding: "10px", textAlign: "center" }}>תאריך רישום</th>
-                <th style={{ padding: "10px", textAlign: "center" }}>סטטוס</th>
-                <th style={{ padding: "10px", textAlign: "center" }}>חדש</th>
-                <th style={{ padding: "10px", textAlign: "center" }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 && (
-                <tr>
-                  <td colSpan={10} style={{ padding: "20px", textAlign: "center", color: "#666" }}>
-                    אין תוצאות
-                  </td>
-                </tr>
-              )}
-              {displayed.map((c) => (
-                <tr key={c.phone} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "10px", textAlign: "right" }}>{c.name}</td>
-                  <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.email || "-"}</td>
-                  <td style={{ padding: "10px", textAlign: "right", fontSize: "12px", direction: "ltr" }}>{c.phone}</td>
-                  <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{c.date_of_birth || "-"}</td>
-                  <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{c.wedding_day || "-"}</td>
-                  <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.city || "-"}</td>
-                  <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{formatRegDate(c.created_at)}</td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    {c.active ? <span className="success">פעיל</span> : <span className="error">הוסר</span>}
-                  </td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    {!c.received_message_at ? (
-                      <span style={{ background: "#e3f2fd", color: "#1565c0", padding: "2px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: 600 }}>חדש</span>
-                    ) : (
-                      <span style={{ color: "#999", fontSize: "12px" }}>—</span>
-                    )}
-                  </td>
-                  <td style={{ padding: "10px", textAlign: "center" }}>
-                    {c.active ? (
-                      <form action="/api/admin/toggle" method="POST" style={{ display: "inline" }}>
-                        <input type="hidden" name="import_token" value={importToken} />
-                        <input type="hidden" name="phone" value={c.phone} />
-                        <input type="hidden" name="action" value="block" />
-                        <button type="submit" className="admin-table-btn">⛔ חסימה</button>
-                      </form>
-                    ) : (
-                      <form action="/api/admin/toggle" method="POST" style={{ display: "inline" }}>
-                        <input type="hidden" name="import_token" value={importToken} />
-                        <input type="hidden" name="phone" value={c.phone} />
-                        <input type="hidden" name="action" value="unblock" />
-                        <button type="submit" className="admin-table-btn">✅ שחזור</button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+        <CustomerTable customers={customerViews} importToken={importToken} />
+
+        <div className="danger-zone">
+          <h3>אזור מסוכן</h3>
+          <p style={{ fontSize: "13px" }}>פעולות בלתי הפיכות. להשתמש בזהירות.</p>
+          <ResetDbForm importToken={importToken} />
         </div>
       </div>
     </div>
