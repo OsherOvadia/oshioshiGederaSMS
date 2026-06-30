@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+
+// Cap how many rows we put in the DOM at once. The list can be thousands of
+// customers, and each row renders in both the desktop table and the mobile
+// card list — rendering them all freezes the page. Searching narrows the set;
+// for browsing, the filter chips above scope it.
+const RENDER_LIMIT = 100;
 
 export type CustomerView = {
   phone: string;
@@ -40,9 +46,11 @@ function StatusBadges({ c }: { c: CustomerView }) {
 
 export default function CustomerTable({ customers, importToken }: Props) {
   const [query, setQuery] = useState("");
+  // Defer the heavy filter+render off the keystroke so typing stays responsive.
+  const deferredQuery = useDeferredValue(query);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
     if (!q) return customers;
     const qDigits = q.replace(/\D/g, "");
     return customers.filter(
@@ -52,7 +60,10 @@ export default function CustomerTable({ customers, importToken }: Props) {
         c.city.toLowerCase().includes(q) ||
         (qDigits !== "" && c.phone.replace(/\D/g, "").includes(qDigits))
     );
-  }, [customers, query]);
+  }, [customers, deferredQuery]);
+
+  const shown = filtered.slice(0, RENDER_LIMIT);
+  const hasQuery = deferredQuery.trim() !== "";
 
   return (
     <>
@@ -64,11 +75,13 @@ export default function CustomerTable({ customers, importToken }: Props) {
         onChange={(e) => setQuery(e.target.value)}
         aria-label="חיפוש לקוחות"
       />
-      {query && (
-        <p style={{ fontSize: "13px", margin: "0 0 10px" }}>
-          {filtered.length} תוצאות מתוך {customers.length}
-        </p>
-      )}
+      <p style={{ fontSize: "13px", margin: "0 0 10px", color: "#666" }}>
+        {hasQuery
+          ? `${filtered.length} תוצאות מתוך ${customers.length}`
+          : `${customers.length} לקוחות`}
+        {filtered.length > RENDER_LIMIT &&
+          ` · מציג ${RENDER_LIMIT} ראשונים — חפשו כדי לצמצם`}
+      </p>
 
       {/* Desktop: full table */}
       <div className="customers-desktop admin-table-wrap">
@@ -94,7 +107,7 @@ export default function CustomerTable({ customers, importToken }: Props) {
                 </td>
               </tr>
             )}
-            {filtered.map((c) => (
+            {shown.map((c) => (
               <tr key={c.phone} style={{ borderBottom: "1px solid #eee" }}>
                 <td style={{ padding: "10px", textAlign: "right" }}>{c.name}</td>
                 <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.email || "-"}</td>
@@ -118,7 +131,7 @@ export default function CustomerTable({ customers, importToken }: Props) {
       {/* Mobile: cards with progressive disclosure */}
       <div className="customers-mobile">
         {filtered.length === 0 && <p style={{ textAlign: "center" }}>אין תוצאות</p>}
-        {filtered.map((c) => (
+        {shown.map((c) => (
           <div key={c.phone} className="customer-card">
             <div className="customer-card-head">
               <span className="customer-card-name">{c.name}</span>
