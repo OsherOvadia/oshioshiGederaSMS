@@ -211,13 +211,17 @@ export async function searchCustomersWithGifts(
   // Phones are stored E.164 (+9725x...); a waiter will type the local 05x...
   // form, so normalize a leading 0 to the 972 country code before matching.
   const normDigits = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
+  // Escape LIKE wildcards in the name pattern so "%%" can't match everyone
+  // and defeat the min-length guard. (digits already strips non-digits, so
+  // the phone clause needs no escaping.)
+  const escaped = q.replace(/[\\%_]/g, (ch) => "\\" + ch);
   const activeCondition = db.type === "postgres" ? "active = TRUE" : "active = 1";
   const nameOp = db.type === "postgres" ? "ILIKE" : "LIKE";
   const phoneClause = digits ? " OR REPLACE(phone, '+', '') LIKE $2" : "";
-  const params: unknown[] = digits ? [`%${q}%`, `%${normDigits}%`] : [`%${q}%`];
+  const params: unknown[] = digits ? [`%${escaped}%`, `%${normDigits}%`] : [`%${escaped}%`];
   const custRows = await queryCustomers(
     db,
-    `SELECT phone, name FROM customers WHERE ${activeCondition} AND (name ${nameOp} $1${phoneClause}) ORDER BY name ASC LIMIT 20`,
+    `SELECT phone, name FROM customers WHERE ${activeCondition} AND (name ${nameOp} $1 ESCAPE '\\'${phoneClause}) ORDER BY name ASC LIMIT 20`,
     params
   );
   if (custRows.length === 0) return [];

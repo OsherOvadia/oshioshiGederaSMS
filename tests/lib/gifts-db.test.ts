@@ -87,8 +87,12 @@ describe("issueMonthlyGifts", () => {
     expect(res.birthday).toEqual([["+972501111111", "אבי"]]);
     expect(res.anniversary).toEqual([["+972502222222", "בני"]]);
     // Re-run: no duplicates, same celebrant lists
+    if (db.type !== "sqlite") throw new Error("expected sqlite");
+    const countBefore = (db.conn.prepare("SELECT COUNT(*) AS n FROM gifts").get() as { n: number }).n;
     const again = await issueMonthlyGifts(db, "2026-08-01");
     expect(again.birthday).toEqual([["+972501111111", "אבי"]]);
+    const countAfter = (db.conn.prepare("SELECT COUNT(*) AS n FROM gifts").get() as { n: number }).n;
+    expect(countAfter).toBe(countBefore);
   });
 });
 
@@ -104,6 +108,17 @@ describe("redeemGift", () => {
     const id = await issueJoining("+972501111111");
     expect(await redeemGift(db, id, "waiter", "2026-08-20")).toBe(true);
     expect(await redeemGift(db, id, "waiter", "2026-08-20")).toBe(false); // no double redemption
+    // Pin the side effects (and the $1/$2 param order): the gift is now used,
+    // redeemed_at is a recent ISO instant, redeemed_by is the waiter.
+    const [c] = await searchCustomersWithGifts(db, "0501111111", "2026-08-20");
+    const g = c.gifts[0];
+    expect(g.status).toBe("used");
+    expect(typeof g.redeemed_at).toBe("string");
+    expect(new Date(g.redeemed_at!).getTime()).toBeGreaterThan(Date.now() - 60_000);
+    expect(new Date(g.redeemed_at!).getTime()).toBeLessThanOrEqual(Date.now());
+    if (db.type !== "sqlite") throw new Error("expected sqlite");
+    const row = db.conn.prepare("SELECT redeemed_by FROM gifts WHERE id = ?").get(id) as { redeemed_by: string };
+    expect(row.redeemed_by).toBe("waiter");
   });
 
   it("refuses redemption before valid_from (joining reward day-after rule)", async () => {
@@ -154,5 +169,54 @@ describe("searchCustomersWithGifts", () => {
   it("returns [] for a blank query instead of listing everyone", async () => {
     await seedCustomer(db, "+972501111111");
     expect(await searchCustomersWithGifts(db, "  ", "2026-08-19")).toEqual([]);
+  });
+
+  it("escapes LIKE wildcards so '%%' cannot match everyone", async () => {
+    await seedCustomer(db, "+972501111111");
+    expect(await searchCustomersWithGifts(db, "%%", "2026-08-19")).toEqual([]);
+  });
+});
+
+describe("postgres SQL branch", () => {
+  // Same fake-connection pattern as tests/lib/schema.test.ts: capture the SQL
+  // and params sent to a "postgres" connection without a real database.
+  function fakePg() {
+    const captured: { sql: string; params: unknown[] }[] = [];
+    const fake = {
+      type: "postgres",
+      conn: {
+        query: (sql: string, params: unknown[] = []) => {
+          captured.push({ sql, params });
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        },
+      },
+    } as unknown as DbConnection;
+    return { fake, captured };
+  }
+
+  it("uses PG dialect SQL and binds exactly one param per $N placeholder", async () => {
+    const { fake, captured } = fakePg();
+    await issueGift(fake, { phone: "+972501111111", type: "joining", period: "once", validFrom: "2026-08-20", validUntil: null });
+    await redeemGift(fake, 1, "waiter", "2026-08-20");
+    // Returns [] because the fake yields no rows — the SQL capture is the point.
+    expect(await searchCustomersWithGifts(fake, "0501234", "2026-08-19")).toEqual([]);
+
+    const issueSql = captured[0].sql;
+    expect(issueSql).toContain("ON CONFLICT (phone, type, period) DO NOTHING");
+    expect(issueSql).not.toContain("OR IGNORE");
+
+    const redeemSql = captured[1].sql;
+    expect(redeemSql).toContain("active = TRUE");
+    expect(redeemSql).not.toContain("active = 1");
+
+    const searchSql = captured[2].sql;
+    expect(searchSql).toContain("ILIKE");
+
+    // The SQLite shim rewrites each $N to a positional ? — so every statement
+    // must bind exactly as many params as it has $N placeholders (no reuse).
+    expect(captured.length).toBeGreaterThan(0);
+    for (const { sql, params } of captured) {
+      expect((sql.match(/\$\d+/g) ?? []).length).toBe(params.length);
+    }
   });
 });
