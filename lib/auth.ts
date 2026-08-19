@@ -38,7 +38,7 @@ export async function getAdminSession(): Promise<boolean> {
 }
 
 /** Call this on any admin API response (redirect or file) so the browser keeps the session. */
-export async function attachSessionCookie(res: NextResponse, role: SessionRole = "admin"): Promise<NextResponse> {
+export async function attachSessionCookie(res: NextResponse, role: SessionRole): Promise<NextResponse> {
   const token = await createSessionJwt(role);
   res.cookies.set(COOKIE_NAME, token, getCookieOptions());
   return res;

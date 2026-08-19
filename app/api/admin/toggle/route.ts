@@ -4,11 +4,13 @@ import { verifyImportToken } from "@/lib/security";
 import { getDb, runDb } from "@/lib/db";
 import { normalizeAdminPhone } from "@/lib/validation";
 
-async function redirectAdmin(req: NextRequest, msg?: string) {
+async function redirectAdmin(req: NextRequest, msg: string | undefined, sessionOk: boolean) {
   const url = new URL("/admin", req.url);
   if (msg) url.searchParams.set("msg", msg);
   const res = NextResponse.redirect(url, 303);
-  await attachSessionCookie(res);
+  // Only refresh the admin cookie for callers that already hold a valid admin
+  // session — never on rejected or token-authenticated requests.
+  if (sessionOk) await attachSessionCookie(res, "admin");
   return res;
 }
 
@@ -17,13 +19,13 @@ export async function POST(req: NextRequest) {
   const sessionOk = await getAdminSession();
   const tokenOk = verifyImportToken((formData.get("import_token") as string) ?? null);
   if (!sessionOk && !tokenOk) {
-    return redirectAdmin(req, "הפעולה נכשלה. נא לרענן את הדף ולנסות שוב.");
+    return redirectAdmin(req, "הפעולה נכשלה. נא לרענן את הדף ולנסות שוב.", false);
   }
 
   const phone = ((formData.get("phone") as string) ?? "").trim();
   const action = ((formData.get("action") as string) ?? "").trim();
   if (!phone || !["block", "unblock"].includes(action)) {
-    return redirectAdmin(req);
+    return redirectAdmin(req, undefined, sessionOk);
   }
 
   const { formatted, clean } = normalizeAdminPhone(phone);
@@ -58,5 +60,5 @@ export async function POST(req: NextRequest) {
   }
   if (db.type === "sqlite") db.conn.close();
 
-  return redirectAdmin(req);
+  return redirectAdmin(req, undefined, sessionOk);
 }

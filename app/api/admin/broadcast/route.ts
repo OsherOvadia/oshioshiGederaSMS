@@ -18,7 +18,7 @@ async function respond(req: NextRequest, ok: boolean, msg: string, sessionOk: bo
     return NextResponse.json({ ok, msg });
   }
   const res = NextResponse.redirect(new URL("/admin?msg=" + encodeURIComponent(msg), req.url), 303);
-  if (sessionOk) await attachSessionCookie(res);
+  if (sessionOk) await attachSessionCookie(res, "admin");
   return res;
 }
 

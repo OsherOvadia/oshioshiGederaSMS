@@ -43,6 +43,6 @@ export async function GET() {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
-  await attachSessionCookie(res);
+  await attachSessionCookie(res, "admin");
   return res;
 }

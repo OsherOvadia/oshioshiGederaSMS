@@ -13,7 +13,7 @@ async function redirectAdmin(req: NextRequest, msg: string, sessionOk: boolean) 
   const url = new URL("/admin", req.url);
   url.searchParams.set("msg", msg);
   const res = NextResponse.redirect(url, 303);
-  if (sessionOk) await attachSessionCookie(res);
+  if (sessionOk) await attachSessionCookie(res, "admin");
   return res;
 }
 

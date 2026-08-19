@@ -32,6 +32,13 @@ describe("session roles", () => {
   it("garbage tokens have no role", async () => {
     expect(await getTokenRole("not-a-jwt")).toBe(null);
   });
+  it("expired tokens have no role", async () => {
+    const expired = await new SignJWT({ role: "admin", admin: true })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("-1s")
+      .sign(getSecret());
+    expect(await getTokenRole(expired)).toBe(null);
+  });
 });
 
 describe("verifyWaiterCredentials", () => {
