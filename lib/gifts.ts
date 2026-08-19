@@ -23,7 +23,11 @@ export type GiftRow = {
 
 export type GiftStatus = "available" | "not_yet" | "used" | "expired";
 
-/** YYYY-MM-DD strings compare correctly as plain strings — no Date parsing needed. */
+/**
+ * YYYY-MM-DD strings compare correctly as plain strings — no Date parsing needed.
+ * Precedence: used > not_yet > expired > available — a redeemed gift reports
+ * 'used' even outside its validity window.
+ */
 export function giftStatus(g: GiftRow, today: string = israelToday()): GiftStatus {
   if (g.redeemed_at) return "used";
   if (today < g.valid_from) return "not_yet";
@@ -38,6 +42,9 @@ export function monthPeriod(isoDate: string): string {
 
 /** First and last calendar day of a 'YYYY-MM' period. */
 export function monthBounds(period: string): { from: string; until: string } {
+  if (!/^\d{4}-\d{2}$/.test(period)) {
+    throw new Error(`monthBounds: expected 'YYYY-MM' period, got '${period}'`);
+  }
   const [y, m] = period.split("-").map((n) => parseInt(n, 10));
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return { from: `${period}-01`, until: `${period}-${String(lastDay).padStart(2, "0")}` };
@@ -49,11 +56,19 @@ export function addDays(isoDate: string, n: number): string {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
+const GIFT_TYPES: readonly GiftType[] = ["joining", "birthday", "anniversary"];
+
+function toGiftType(v: unknown): GiftType {
+  const s = String(v ?? "");
+  if ((GIFT_TYPES as readonly string[]).includes(s)) return s as GiftType;
+  throw new Error(`Unknown gift type: ${s}`);
+}
+
 export function mapGiftRow(r: Record<string, unknown>): GiftRow {
   return {
     id: Number(r.id),
     phone: String(r.phone ?? ""),
-    type: String(r.type ?? "") as GiftType,
+    type: toGiftType(r.type),
     period: String(r.period ?? ""),
     valid_from: String(r.valid_from ?? ""),
     valid_until: r.valid_until != null ? String(r.valid_until) : null,
