@@ -24,8 +24,10 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     if (db.type === "postgres") {
       await runDb(db, "TRUNCATE TABLE customers", []);
+      await runDb(db, "TRUNCATE TABLE gifts", []);
     } else {
       await runDb(db, "DELETE FROM customers", []);
+      await runDb(db, "DELETE FROM gifts", []);
       db.conn.close();
     }
     return redirectAdmin(req, "מאגר הלקוחות אופס (0 אנשי קשר).", sessionOk);
