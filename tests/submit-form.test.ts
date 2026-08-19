@@ -8,6 +8,7 @@ const valid = {
   date_of_birth: "1990-05-12",
   wedding_day: "2015-08-01",
   city: "גדרה",
+  consent: "on",
 };
 
 describe("parseSubmitFields", () => {
@@ -65,5 +66,28 @@ describe("parseSubmitFields", () => {
   it("treats non-string values (e.g. a File) as empty", () => {
     const r = parseSubmitFields({ ...valid, name: 42 });
     expect(r).toEqual({ ok: false, error: "missing" });
+  });
+});
+
+describe("consent", () => {
+  const valid = {
+    name: "דנה",
+    phone: "0501234567",
+    email: "a@b.co",
+    date_of_birth: "1990-08-15",
+    wedding_day: "",
+    city: "גדרה",
+  };
+  it("rejects a submission without the consent checkbox", () => {
+    const res = parseSubmitFields({ ...valid });
+    expect(res).toEqual({ ok: false, error: "consent" });
+  });
+  it("accepts checkbox value 'on'", () => {
+    const res = parseSubmitFields({ ...valid, consent: "on" });
+    expect(res.ok).toBe(true);
+  });
+  it("rejects consent values that aren't an affirmative checkbox", () => {
+    expect(parseSubmitFields({ ...valid, consent: "" }).ok).toBe(false);
+    expect(parseSubmitFields({ ...valid, consent: "off" }).ok).toBe(false);
   });
 });

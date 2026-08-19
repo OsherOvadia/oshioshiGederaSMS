@@ -1,6 +1,6 @@
 import { formatPhone, isValidEmail, isValidPhone } from "./validation";
 
-export type SubmitError = "missing" | "invalid_phone" | "invalid_email";
+export type SubmitError = "missing" | "invalid_phone" | "invalid_email" | "consent";
 
 export type ParsedSubmit =
   | {
@@ -24,6 +24,7 @@ export function parseSubmitFields(raw: {
   date_of_birth?: unknown;
   wedding_day?: unknown;
   city?: unknown;
+  consent?: unknown;
 }): ParsedSubmit {
   const name = str(raw.name, 100);
   const rawPhone = str(raw.phone, 20);
@@ -37,6 +38,10 @@ export function parseSubmitFields(raw: {
   const phone = formatPhone(rawPhone);
   if (!isValidPhone(phone)) return { ok: false, error: "invalid_phone" };
   if (!isValidEmail(email)) return { ok: false, error: "invalid_email" };
+
+  // HTML checkboxes submit "on" when checked and are absent when not.
+  const consentGiven = raw.consent === "on" || raw.consent === "1" || raw.consent === "true" || raw.consent === true;
+  if (!consentGiven) return { ok: false, error: "consent" };
 
   return { ok: true, fields: { name, phone, email, dob, wedding, city } };
 }
