@@ -118,8 +118,12 @@ export async function applySchema(db: DbConnection): Promise<void> {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `;
-  // Gift validity dates are Israel-local calendar dates (YYYY-MM-DD, TEXT in
-  // both engines) so they compare correctly as strings.
+  // valid_from/valid_until are Israel-local calendar dates (YYYY-MM-DD, TEXT
+  // in both engines) so they compare correctly as strings. redeemed_at is a
+  // UTC ISO instant stored as TEXT; created_at defaults are UTC, not
+  // Israel-local.
+  // The ONLY intended differences between the two gifts DDL literals below
+  // are the id column and the created_at default — keep them in sync.
   const giftsSchemaSqlite = `
     CREATE TABLE IF NOT EXISTS gifts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

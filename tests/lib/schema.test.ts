@@ -35,6 +35,43 @@ describe("applySchema", () => {
       db.conn
         .prepare("INSERT INTO gifts (phone, type, period, valid_from) VALUES (?, ?, ?, ?)")
         .run("+972501234567", "joining", "once", "2026-08-20")
-    ).toThrow();
+    ).toThrow(/UNIQUE/);
+  });
+
+  it("issues Postgres DDL with all consent ALTERs and no SQLite-isms", async () => {
+    const captured: string[] = [];
+    const fake = {
+      type: "postgres",
+      conn: {
+        query: (sql: string) => {
+          captured.push(sql);
+          return Promise.resolve({ rows: [], rowCount: 0 });
+        },
+      },
+    } as unknown as DbConnection;
+    await applySchema(fake);
+
+    const expectedAlters = [
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS received_message_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_version TEXT",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_ip TEXT",
+    ];
+    for (const alter of expectedAlters) {
+      expect(captured).toContain(alter);
+    }
+
+    const giftsDdl = captured.find((sql) => sql.includes("CREATE TABLE IF NOT EXISTS gifts"));
+    expect(giftsDdl).toBeDefined();
+    expect(giftsDdl).toContain("SERIAL");
+
+    // Pin the customers-schema .replace() conversion: no SQLite-ism may leak into PG SQL.
+    for (const sql of captured) {
+      expect(sql).not.toContain("AUTOINCREMENT");
+      expect(sql).not.toContain("datetime('now')");
+      expect(sql).not.toContain("INTEGER DEFAULT 1");
+    }
   });
 });
