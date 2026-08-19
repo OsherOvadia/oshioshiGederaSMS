@@ -671,6 +671,12 @@ a:hover {
   margin: 0;
 }
 
+/* Permanent delete — visually separated from the reversible block/restore action. */
+.admin-table-btn-danger {
+  color: #b71c1c;
+  margin-inline-start: 10px;
+}
+
 .customers-desktop {
   display: block;
 }
@@ -878,53 +884,133 @@ a:hover {
   opacity: 0.7;
 }
 
-.waiter-page h1 {
-  margin-bottom: 2px;
-}
+/* Waiter screen: one row per member, one column per reward type. */
 .waiter-sub {
   opacity: 0.75;
-  margin-bottom: 16px;
+  margin: 0 0 14px;
+  font-size: 14px;
 }
-.waiter-customer {
-  border: 1px solid rgba(128, 128, 128, 0.3);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-top: 14px;
+
+.waiter-search {
+  max-width: 420px;
+  font-size: 16px; /* keeps iOS from zooming the tablet view on focus */
 }
-.waiter-customer-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+
+.waiter-count {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 10px;
 }
-.waiter-gifts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+
+.waiter-flash {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  color: #1b5e20;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.waiter-table {
+  font-size: 14px;
+}
+
+.waiter-table thead tr {
+  background: #f5f5f5;
+  border-bottom: 2px solid var(--brand-red, #d32f2f);
+}
+
+.waiter-table th {
+  padding: 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.waiter-table td {
+  padding: 10px;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+
+.waiter-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.waiter-name {
+  font-weight: 600;
+  min-width: 8rem;
+}
+
+.waiter-phone a {
+  direction: ltr;
+  unicode-bidi: embed;
+  white-space: nowrap;
+}
+
+.waiter-gift-col {
+  min-width: 8.5rem;
+}
+
+.gift-cell {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
 }
-.waiter-gift {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 0.9rem;
+
+.gift-cell + .gift-cell {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e0e0e0;
 }
-.waiter-gift .gift-status {
-  opacity: 0.75;
+
+.gift-none {
+  color: #bbb;
 }
-.waiter-gift.status-used,
-.waiter-gift.status-expired {
-  opacity: 0.55;
+
+.gift-note {
+  font-size: 12px;
+  color: #666;
 }
+
+.gift-used {
+  color: #2e7d32;
+}
+
+/* Redemption is irreversible — make it a deliberate, clearly-hittable target. */
 .redeem-btn {
-  margin-inline-start: auto;
-  padding: 6px 12px;
-  font-size: 0.85rem;
+  width: auto;
+  margin: 0;
+  padding: 8px 12px;
+  min-height: 40px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
 }
-.waiter-no-gifts {
-  opacity: 0.6;
-  font-size: 0.85rem;
+
+.redeem-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.waiter-empty {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+@media (max-width: 700px) {
+  .waiter-table {
+    font-size: 13px;
+  }
+
+  .waiter-table th,
+  .waiter-table td {
+    padding: 8px 6px;
+  }
 }

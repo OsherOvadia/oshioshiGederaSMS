@@ -6,6 +6,7 @@ import {
   issueMonthlyGifts,
   redeemGift,
   searchCustomersWithGifts,
+  listActiveCustomersWithGifts,
 } from "@/lib/gifts";
 
 function memoryDb(): DbConnection {
@@ -243,5 +244,31 @@ describe("postgres SQL branch", () => {
     for (const { sql, params } of captured) {
       expect((sql.match(/\$\d+/g) ?? []).length).toBe(params.length);
     }
+  });
+});
+
+describe("listActiveCustomersWithGifts", () => {
+  it("returns every active customer with only name, phone and gifts", async () => {
+    await seedCustomer(db, "+972501111111", { name: "אבי כהן" });
+    await seedCustomer(db, "+972502222222", { name: "בת שבע" });
+    await seedCustomer(db, "+972503333333", { name: "מוסר", active: 0 });
+    const rows = await listActiveCustomersWithGifts(db, "2026-08-19");
+    expect(rows.map((r) => r.name)).toEqual(["אבי כהן", "בת שבע"]);
+    expect(Object.keys(rows[0]).sort()).toEqual(["gifts", "name", "phone"]);
+  });
+
+  it("attaches each customer's gifts and hides expired ones", async () => {
+    await seedCustomer(db, "+972501111111", { name: "אבי" });
+    await issueGift(db, { phone: "+972501111111", type: "joining", period: "once", validFrom: "2026-08-20", validUntil: null });
+    await issueGift(db, { phone: "+972501111111", type: "birthday", period: "2026-07", validFrom: "2026-07-01", validUntil: "2026-07-31" });
+    const [c] = await listActiveCustomersWithGifts(db, "2026-08-19");
+    expect(c.gifts).toHaveLength(1);
+    expect(c.gifts[0].type).toBe("joining");
+    expect(c.gifts[0].status).toBe("not_yet");
+  });
+
+  it("returns [] when there are no active customers", async () => {
+    await seedCustomer(db, "+972509999999", { active: 0 });
+    expect(await listActiveCustomersWithGifts(db, "2026-08-19")).toEqual([]);
   });
 });

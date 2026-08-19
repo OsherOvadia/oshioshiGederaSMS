@@ -227,6 +227,39 @@ export async function searchCustomersWithGifts(
     `SELECT phone, name FROM customers WHERE ${activeCondition} AND (name ${nameOp} $1 ESCAPE '\\'${phoneClause}) ORDER BY name ASC LIMIT 20`,
     params
   );
+  return attachGifts(db, custRows, today);
+}
+
+/**
+ * Every active member with their gifts — the waiter screen loads this once and
+ * filters it in the browser, so searching costs no round-trip. Same column
+ * restriction as the search: phone + name only.
+ */
+export async function listActiveCustomersWithGifts(
+  db: DbConnection,
+  today: string = israelToday()
+): Promise<WaiterCustomer[]> {
+  const activeCondition = db.type === "postgres" ? "active = TRUE" : "active = 1";
+  const custRows = await queryCustomers(
+    db,
+    `SELECT phone, name FROM customers WHERE ${activeCondition} ORDER BY name ASC LIMIT ${WAITER_LIST_LIMIT}`,
+    []
+  );
+  return attachGifts(db, custRows, today);
+}
+
+/** Upper bound on rows sent to the tablet in one payload. */
+export const WAITER_LIST_LIMIT = 2000;
+
+/**
+ * Attach each customer's non-expired gifts. Expired gifts can never be
+ * redeemed, so they are left off the tablet entirely.
+ */
+async function attachGifts(
+  db: DbConnection,
+  custRows: Record<string, unknown>[],
+  today: string
+): Promise<WaiterCustomer[]> {
   if (custRows.length === 0) return [];
   const phones = custRows.map((r) => String(r.phone));
   const placeholders = phones.map((_, i) => `$${i + 1}`).join(", ");
@@ -240,7 +273,6 @@ export async function searchCustomersWithGifts(
   for (const raw of giftRows) {
     const g = mapGiftRow(raw);
     const status = giftStatus(g, today);
-    // Expired gifts can never be redeemed — leave them off the tablet.
     if (status === "expired") continue;
     const list = byPhone.get(g.phone) ?? [];
     list.push({
