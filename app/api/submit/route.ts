@@ -88,20 +88,25 @@ export async function POST(req: NextRequest) {
 
     if (db.type === "sqlite") db.conn.close();
 
-    // Welcome SMS — fire-and-forget: consent was just captured on this very
-    // submission, and a QStash hiccup must never fail the signup.
-    const qstashToken = process.env.QSTASH_TOKEN;
-    const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);
-    if (qstashToken && baseUrl) {
-      const r = await publishSmsTask({
-        targetEndpoint: `${baseUrl}/api/send_sms_task`,
-        phone,
-        message: welcomeSms(name),
-        secret: getAppSecret(),
-        token: qstashToken,
-        timeoutMs: 5000,
-      });
-      if (!r.ok) console.error("Failed to queue welcome sms for", phone, r.error);
+    // Welcome SMS — queued synchronously (serverless can't outlive the response),
+    // but failures are swallowed: nothing after the committed insert may change
+    // the HTTP outcome of a successful signup.
+    try {
+      const qstashToken = process.env.QSTASH_TOKEN;
+      const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);
+      if (qstashToken && baseUrl) {
+        const r = await publishSmsTask({
+          targetEndpoint: `${baseUrl}/api/send_sms_task`,
+          phone,
+          message: welcomeSms(name),
+          secret: getAppSecret(),
+          token: qstashToken,
+          timeoutMs: 5000,
+        });
+        if (!r.ok) console.error("Failed to queue welcome sms for", phone, r.error);
+      }
+    } catch (e) {
+      console.error("Failed to queue welcome sms for", phone, e);
     }
     if (wantsJson(req)) return jsonResponse(true);
     return NextResponse.redirect(new URL("/?success=1", req.url));
