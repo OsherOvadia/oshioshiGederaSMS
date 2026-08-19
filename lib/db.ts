@@ -101,11 +101,12 @@ export async function runDb(
   }
 }
 
-// Run schema init once per process to avoid repeated ALTERs
-export async function initDb(): Promise<void> {
-  if (typeof globalForDb._initDone === "boolean" && globalForDb._initDone) return;
-  const db = getDb();
-  const schema = `
+/**
+ * Apply the full schema to an open connection. Exported separately from
+ * initDb so tests can run it against an in-memory SQLite database.
+ */
+export async function applySchema(db: DbConnection): Promise<void> {
+  const customersSchema = `
     CREATE TABLE IF NOT EXISTS customers (
       phone TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -117,32 +118,75 @@ export async function initDb(): Promise<void> {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `;
+  // Gift validity dates are Israel-local calendar dates (YYYY-MM-DD, TEXT in
+  // both engines) so they compare correctly as strings.
+  const giftsSchemaSqlite = `
+    CREATE TABLE IF NOT EXISTS gifts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      type TEXT NOT NULL,
+      period TEXT NOT NULL,
+      valid_from TEXT NOT NULL,
+      valid_until TEXT,
+      redeemed_at TEXT,
+      redeemed_by TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(phone, type, period)
+    )
+  `;
+  const giftsSchemaPg = `
+    CREATE TABLE IF NOT EXISTS gifts (
+      id SERIAL PRIMARY KEY,
+      phone TEXT NOT NULL,
+      type TEXT NOT NULL,
+      period TEXT NOT NULL,
+      valid_from TEXT NOT NULL,
+      valid_until TEXT,
+      redeemed_at TEXT,
+      redeemed_by TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(phone, type, period)
+    )
+  `;
   if (db.type === "postgres") {
-    const pgSchema = schema
+    const pgSchema = customersSchema
       .replace("INTEGER DEFAULT 1", "BOOLEAN DEFAULT TRUE")
       .replace("TEXT DEFAULT (datetime('now'))", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
     await db.conn.query(pgSchema);
-    await db.conn.query(
-      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-    ).catch(() => {});
-    await db.conn.query(
-      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS received_message_at TIMESTAMP"
-    ).catch(() => {});
-    await db.conn.query(
-      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMP"
-    ).catch(() => {});
+    const alters = [
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS received_message_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_at TIMESTAMP",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_version TEXT",
+      "ALTER TABLE customers ADD COLUMN IF NOT EXISTS consent_ip TEXT",
+    ];
+    for (const sql of alters) await db.conn.query(sql).catch(() => {});
+    await db.conn.query(giftsSchemaPg);
   } else {
-    db.conn.exec(schema);
-    try {
-      db.conn.prepare("ALTER TABLE customers ADD COLUMN created_at TEXT DEFAULT (datetime('now'))").run();
-    } catch {}
-    try {
-      db.conn.prepare("ALTER TABLE customers ADD COLUMN received_message_at TEXT").run();
-    } catch {}
-    try {
-      db.conn.prepare("ALTER TABLE customers ADD COLUMN unsubscribed_at TEXT").run();
-    } catch {}
+    db.conn.exec(customersSchema);
+    const alters = [
+      "ALTER TABLE customers ADD COLUMN created_at TEXT DEFAULT (datetime('now'))",
+      "ALTER TABLE customers ADD COLUMN received_message_at TEXT",
+      "ALTER TABLE customers ADD COLUMN unsubscribed_at TEXT",
+      "ALTER TABLE customers ADD COLUMN consent_at TEXT",
+      "ALTER TABLE customers ADD COLUMN consent_version TEXT",
+      "ALTER TABLE customers ADD COLUMN consent_ip TEXT",
+    ];
+    for (const sql of alters) {
+      try {
+        db.conn.prepare(sql).run();
+      } catch {}
+    }
+    db.conn.exec(giftsSchemaSqlite);
   }
+}
+
+// Run schema init once per process to avoid repeated ALTERs
+export async function initDb(): Promise<void> {
+  if (typeof globalForDb._initDone === "boolean" && globalForDb._initDone) return;
+  const db = getDb();
+  await applySchema(db);
   if (db.type === "sqlite") db.conn.close();
   globalForDb._initDone = true;
 }
@@ -158,6 +202,9 @@ export type CustomerRow = {
   created_at: string | null;
   received_message_at: string | null;
   unsubscribed_at: string | null;
+  consent_at: string | null;
+  consent_version: string | null;
+  consent_ip: string | null;
 };
 
 export function mapRow(r: Record<string, unknown>): CustomerRow {
@@ -176,5 +223,8 @@ export function mapRow(r: Record<string, unknown>): CustomerRow {
     created_at: created,
     received_message_at,
     unsubscribed_at,
+    consent_at: r.consent_at != null ? String(r.consent_at) : null,
+    consent_version: r.consent_version != null ? String(r.consent_version) : null,
+    consent_ip: r.consent_ip != null ? String(r.consent_ip) : null,
   };
 }
