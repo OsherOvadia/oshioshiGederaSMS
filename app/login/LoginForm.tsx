@@ -21,7 +21,7 @@ export default function LoginForm() {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok === true) {
         // Session cookie is set by /api/login (Set-Cookie); just navigate.
-        window.location.href = "/admin";
+        window.location.href = data.role === "waiter" ? "/waiter" : "/admin";
         return;
       }
       if (res.status === 429 || data.error === "rate") {
@@ -38,6 +38,15 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit}>
+      <div className="form-group">
+        <input
+          type="text"
+          name="username"
+          placeholder="שם משתמש (ריק = מנהל)"
+          autoComplete="username"
+          disabled={loading}
+        />
+      </div>
       <div className="form-group">
         <input
           type="password"
