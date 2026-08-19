@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, queryCustomers } from "@/lib/db";
+import { getDb, initDb } from "@/lib/db";
 import { getAppSecret } from "@/lib/security";
-import { getBirthMonth } from "@/lib/dates";
 import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
+import { issueMonthlyGifts } from "@/lib/gifts";
+import { birthdaySms, anniversarySms } from "@/lib/sms-messages";
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -25,51 +26,49 @@ async function handleCron(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-
+  await initDb();
   const db = getDb();
-  const activeCondition = db.type === "postgres" ? "WHERE active = TRUE" : "WHERE active = 1";
-  const rows = await queryCustomers(
-    db,
-    `SELECT phone, name, date_of_birth FROM customers ${activeCondition}`,
-    []
-  );
+  // Issue this month's gifts FIRST — gift existence must never depend on
+  // QStash being configured or reachable.
+  const { birthday, anniversary } = await issueMonthlyGifts(db);
   if (db.type === "sqlite") db.conn.close();
-
-  const birthdaysFound: [string, string][] = [];
-  for (const row of rows) {
-    const month = getBirthMonth(row.date_of_birth as string);
-    if (month === currentMonth) {
-      birthdaysFound.push([String(row.phone), String(row.name ?? "")]);
-    }
-  }
 
   const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);
   const targetEndpoint = `${baseUrl}/api/send_sms_task`;
   const secret = getAppSecret();
-  let sentCount = 0;
+  let birthdayQueued = 0;
+  let anniversaryQueued = 0;
 
   if (QSTASH_TOKEN && baseUrl) {
-    for (const [phone, name] of birthdaysFound) {
-      const msg = `היי ${name}, חוגג/ת יום הולדת החודש? 🎂\nמזל טוב! מחכה לך הטבה מיוחדת ב-Sushi VIP. בואו לחגוג איתנו! 🍣`;
+    for (const [phone, name] of birthday) {
       const r = await publishSmsTask({
         targetEndpoint,
         phone,
-        message: msg,
+        message: birthdaySms(name),
         secret,
         token: QSTASH_TOKEN,
         timeoutMs: 5000,
       });
-      if (r.ok) sentCount += 1;
+      if (r.ok) birthdayQueued += 1;
       else console.error("Failed to queue birthday sms for", phone, r.error);
+    }
+    for (const [phone, name] of anniversary) {
+      const r = await publishSmsTask({
+        targetEndpoint,
+        phone,
+        message: anniversarySms(name),
+        secret,
+        token: QSTASH_TOKEN,
+        timeoutMs: 5000,
+      });
+      if (r.ok) anniversaryQueued += 1;
+      else console.error("Failed to queue anniversary sms for", phone, r.error);
     }
   }
 
   return NextResponse.json({
     status: "success",
-    month: currentMonth,
-    found: birthdaysFound.length,
-    queued: sentCount,
+    birthdays: { found: birthday.length, queued: birthdayQueued },
+    anniversaries: { found: anniversary.length, queued: anniversaryQueued },
   });
 }
