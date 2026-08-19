@@ -16,13 +16,18 @@ export const metadata = {
 };
 
 const UPDATED = "20.08.2026";
-const TBD = "[להשלמה]";
 
 export default function TermsPage() {
   const keyword = (process.env.UNSUBSCRIBE_KEYWORD || "1111").trim();
-  const phone = (process.env.CLUB_CONTACT_PHONE || "").trim() || TBD;
-  const email = (process.env.CLUB_CONTACT_EMAIL || "").trim() || TBD;
-  const address = (process.env.CLUB_ADDRESS || "").trim() || TBD;
+  // Each contact channel is listed only when configured — an unset channel is
+  // omitted rather than shown as an empty placeholder. Address + phone alone
+  // already satisfy the "way to contact us" duty; email is a bonus channel.
+  const channels = [
+    (process.env.CLUB_ADDRESS || "").trim(),
+    ((p) => (p ? `טלפון: ${p}` : ""))((process.env.CLUB_CONTACT_PHONE || "").trim()),
+    ((e) => (e ? `דוא"ל: ${e}` : ""))((process.env.CLUB_CONTACT_EMAIL || "").trim()),
+  ].filter(Boolean);
+  const contactLine = channels.length > 0 ? `, ${channels.join(", ")}` : "";
 
   return (
     <main className="container terms-page" dir="rtl">
@@ -176,8 +181,7 @@ export default function TermsPage() {
         <h2>12. פרטי התקשרות</h2>
         <p>
           בכל פנייה בענייני המועדון, לרבות בקשות עיון, תיקון, מחיקה או הסרה מדיוור, ניתן לפנות אל
-          מסעדת Oshi Oshi גדרה, {address}, טלפון: {phone}, דוא&quot;ל: {email}. פניות ייענו בתוך זמן
-          סביר.
+          מסעדת Oshi Oshi גדרה{contactLine}. פניות ייענו בתוך זמן סביר.
         </p>
       </section>
 
