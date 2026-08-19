@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ ok: false, error: "invalid" }, { status: 400 });
   }
-  const id = Number(giftId);
-  if (!Number.isInteger(id) || id <= 0) {
+  if (typeof giftId !== "number" || !Number.isInteger(giftId) || giftId <= 0) {
     return NextResponse.json({ ok: false, error: "invalid" }, { status: 400 });
   }
+  const id = giftId;
 
   try {
     await initDb();

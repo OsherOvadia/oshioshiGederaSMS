@@ -28,8 +28,10 @@ function statusText(g: Gift): string {
 
 export default function WaiterPanel() {
   const [q, setQ] = useState("");
+  const [lastQuery, setLastQuery] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function search(query: string) {
@@ -42,6 +44,7 @@ export default function WaiterPanel() {
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       setCustomers(data.customers ?? []);
+      setLastQuery(query);
     } catch {
       setError("שגיאה בחיפוש. נסו שוב.");
     } finally {
@@ -51,23 +54,31 @@ export default function WaiterPanel() {
 
   async function redeem(gift: Gift) {
     if (!window.confirm(`לאשר מימוש "${gift.label}"? פעולה זו אינה ניתנת לביטול.`)) return;
-    setError(null);
+    setRedeeming(true);
+    let message: string | null = null;
     try {
-      const res = await fetch("/api/waiter/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ giftId: gift.id }),
-      });
-      if (res.status === 409) {
-        setError("המתנה כבר מומשה או אינה בתוקף.");
-      } else if (!res.ok) {
-        setError("שגיאה במימוש. נסו שוב.");
+      try {
+        const res = await fetch("/api/waiter/redeem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ giftId: gift.id }),
+        });
+        if (res.status === 409) {
+          message = "המתנה כבר מומשה או אינה בתוקף.";
+        } else if (!res.ok) {
+          message = "שגיאה במימוש. נסו שוב.";
+        }
+      } catch {
+        message = "שגיאה במימוש. נסו שוב.";
       }
-    } catch {
-      setError("שגיאה במימוש. נסו שוב.");
+      // Refresh first (search() clears the error state), then surface the
+      // redeem error so it stays visible after the refresh.
+      if (lastQuery) await search(lastQuery);
+      if (message) setError(message);
+    } finally {
+      setRedeeming(false);
     }
-    await search(q); // always refresh so the screen shows the true state
   }
 
   return (
@@ -107,7 +118,12 @@ export default function WaiterPanel() {
                   <span className="gift-label">{g.label}</span>
                   <span className="gift-status">{statusText(g)}</span>
                   {g.status === "available" && (
-                    <button type="button" className="redeem-btn" onClick={() => redeem(g)}>
+                    <button
+                      type="button"
+                      className="redeem-btn"
+                      disabled={redeeming}
+                      onClick={() => redeem(g)}
+                    >
                       סימון כמומשה
                     </button>
                   )}
