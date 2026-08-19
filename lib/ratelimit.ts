@@ -66,4 +66,5 @@ export const LIMITS = {
   forceInit: { max: 1, window: "hour" },
   sendSmsTask: { max: 100, window: "minute" },
   unsubscribe: { max: 10, window: "minute" },
+  waiter: { max: 30, window: "minute" },
 } as const;
