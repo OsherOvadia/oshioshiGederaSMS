@@ -3,6 +3,11 @@ import { getDb, runDb, queryCustomers, initDb } from "@/lib/db";
 import { parseSubmitFields, type SubmitError } from "@/lib/submit-form";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
+import { issueSignupGifts } from "@/lib/gifts";
+import { welcomeSms } from "@/lib/sms-messages";
+import { CONSENT_VERSION } from "@/lib/consent";
+import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
+import { getAppSecret } from "@/lib/security";
 
 export type SubmitErrorKey = SubmitError | "already_registered" | "system" | "rate";
 
@@ -31,6 +36,7 @@ export async function POST(req: NextRequest) {
     date_of_birth: form.get("date_of_birth"),
     wedding_day: form.get("wedding_day"),
     city: form.get("city"),
+    consent: form.get("consent"),
   });
 
   if (!parsed.ok) {
@@ -57,19 +63,46 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const consentAt = new Date().toISOString();
     const insertSql =
       db.type === "postgres"
-        ? `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active)
-           VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+        ? `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active, consent_at, consent_version, consent_ip)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, $8, $9)
            ON CONFLICT(phone) DO UPDATE SET active = TRUE, unsubscribed_at = NULL, name = EXCLUDED.name, email = EXCLUDED.email,
-           date_of_birth = EXCLUDED.date_of_birth, wedding_day = EXCLUDED.wedding_day, city = EXCLUDED.city`
-        : `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active)
-           VALUES ($1, $2, $3, $4, $5, $6, 1)
+           date_of_birth = EXCLUDED.date_of_birth, wedding_day = EXCLUDED.wedding_day, city = EXCLUDED.city,
+           consent_at = EXCLUDED.consent_at, consent_version = EXCLUDED.consent_version, consent_ip = EXCLUDED.consent_ip`
+        : `INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active, consent_at, consent_version, consent_ip)
+           VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8, $9)
            ON CONFLICT(phone) DO UPDATE SET active = 1, unsubscribed_at = NULL, name = excluded.name, email = excluded.email,
-           date_of_birth = excluded.date_of_birth, wedding_day = excluded.wedding_day, city = excluded.city`;
-    await runDb(db, insertSql, [phone, name, email, dob, wedding, city]);
+           date_of_birth = excluded.date_of_birth, wedding_day = excluded.wedding_day, city = excluded.city,
+           consent_at = excluded.consent_at, consent_version = excluded.consent_version, consent_ip = excluded.consent_ip`;
+    await runDb(db, insertSql, [phone, name, email, dob, wedding, city, consentAt, CONSENT_VERSION, ip]);
+
+    // Joining Reward (+ same-month birthday/anniversary) — issued inside the
+    // same request; duplicate-safe on re-subscribes via UNIQUE(phone,type,period).
+    try {
+      await issueSignupGifts(db, { phone, dob, wedding });
+    } catch (e) {
+      console.error("Failed to issue signup gifts for", phone, e);
+    }
 
     if (db.type === "sqlite") db.conn.close();
+
+    // Welcome SMS — fire-and-forget: consent was just captured on this very
+    // submission, and a QStash hiccup must never fail the signup.
+    const qstashToken = process.env.QSTASH_TOKEN;
+    const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);
+    if (qstashToken && baseUrl) {
+      const r = await publishSmsTask({
+        targetEndpoint: `${baseUrl}/api/send_sms_task`,
+        phone,
+        message: welcomeSms(name),
+        secret: getAppSecret(),
+        token: qstashToken,
+        timeoutMs: 5000,
+      });
+      if (!r.ok) console.error("Failed to queue welcome sms for", phone, r.error);
+    }
     if (wantsJson(req)) return jsonResponse(true);
     return NextResponse.redirect(new URL("/?success=1", req.url));
   } catch (e) {
