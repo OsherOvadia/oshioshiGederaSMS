@@ -4,7 +4,7 @@ import { parseSubmitFields, type SubmitError } from "@/lib/submit-form";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
 import { issueSignupGifts } from "@/lib/gifts";
-import { welcomeSms } from "@/lib/sms-messages";
+import { welcomeSms, welcomeBackSms } from "@/lib/sms-messages";
 import { CONSENT_VERSION } from "@/lib/consent";
 import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
 import { getAppSecret } from "@/lib/security";
@@ -80,8 +80,11 @@ export async function POST(req: NextRequest) {
 
     // Joining Reward (+ same-month birthday/anniversary) — issued inside the
     // same request; duplicate-safe on re-subscribes via UNIQUE(phone,type,period).
+    // joiningIssued=false means a re-subscriber whose joining gift already
+    // exists — the welcome SMS must not promise a fresh one.
+    let joiningIssued = false;
     try {
-      await issueSignupGifts(db, { phone, dob, wedding });
+      ({ joiningIssued } = await issueSignupGifts(db, { phone, dob, wedding }));
     } catch (e) {
       console.error("Failed to issue signup gifts for", phone, e);
     }
@@ -98,7 +101,7 @@ export async function POST(req: NextRequest) {
         const r = await publishSmsTask({
           targetEndpoint: `${baseUrl}/api/send_sms_task`,
           phone,
-          message: welcomeSms(name),
+          message: joiningIssued ? welcomeSms(name) : welcomeBackSms(name),
           secret: getAppSecret(),
           token: qstashToken,
           timeoutMs: 5000,

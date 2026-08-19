@@ -56,7 +56,10 @@ describe("issueGift", () => {
 describe("issueSignupGifts", () => {
   it("creates a joining gift valid from the next day", async () => {
     await seedCustomer(db, "+972501111111", { dob: "1990-01-15" });
-    await issueSignupGifts(db, { phone: "+972501111111", dob: "1990-01-15", wedding: "" }, "2026-08-19");
+    const first = await issueSignupGifts(db, { phone: "+972501111111", dob: "1990-01-15", wedding: "" }, "2026-08-19");
+    expect(first.joiningIssued).toBe(true);
+    const again = await issueSignupGifts(db, { phone: "+972501111111", dob: "1990-01-15", wedding: "" }, "2026-08-19");
+    expect(again.joiningIssued).toBe(false); // re-subscriber: joining gift already exists
     const [c] = await searchCustomersWithGifts(db, "0501111111", "2026-08-19");
     expect(c.gifts).toHaveLength(1);
     expect(c.gifts[0].type).toBe("joining");
@@ -174,6 +177,28 @@ describe("searchCustomersWithGifts", () => {
   it("escapes LIKE wildcards so '%%' cannot match everyone", async () => {
     await seedCustomer(db, "+972501111111");
     expect(await searchCustomersWithGifts(db, "%%", "2026-08-19")).toEqual([]);
+  });
+
+  it("excludes expired gifts from the returned list", async () => {
+    await seedCustomer(db, "+972507777777", { name: "נועה" });
+    await issueGift(db, {
+      phone: "+972507777777",
+      type: "birthday",
+      period: "2026-07",
+      validFrom: "2026-07-01",
+      validUntil: "2026-07-31", // expired relative to today=2026-08-19
+    });
+    await issueGift(db, {
+      phone: "+972507777777",
+      type: "joining",
+      period: "once",
+      validFrom: "2026-08-01",
+      validUntil: null,
+    });
+    const [c] = await searchCustomersWithGifts(db, "0507777777", "2026-08-19");
+    expect(c.gifts).toHaveLength(1);
+    expect(c.gifts[0].type).toBe("joining");
+    expect(c.gifts[0].status).toBe("available");
   });
 });
 

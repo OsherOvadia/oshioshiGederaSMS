@@ -21,7 +21,7 @@ export default async function LoginPage({
       <div className="logo-area">
         <Logo />
       </div>
-      <h2>כניסת מנהל</h2>
+      <h2>כניסה לצוות</h2>
       {isWrong && <p className="error">סיסמה שגויה</p>}
       {isRate && <p className="error">יותר מדי ניסיונות. נסה שוב מאוחר יותר.</p>}
       {isSystem && <p className="error">שגיאת מערכת. בדוק את ההגדרות (מאגר נתונים, SECRET_KEY).</p>}

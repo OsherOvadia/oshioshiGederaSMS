@@ -100,16 +100,18 @@ export async function issueGift(
  * day, never expires), plus this month's birthday/anniversary gift when the
  * customer's celebration month is the current month (so mid-month joiners
  * aren't skipped by the cron that already ran on the 1st).
+ * Returns whether the joining gift was actually created — false means a
+ * re-subscriber whose joining reward (possibly redeemed) already exists.
  */
 export async function issueSignupGifts(
   db: DbConnection,
   customer: { phone: string; dob: string; wedding: string },
   today: string = israelToday()
-): Promise<void> {
+): Promise<{ joiningIssued: boolean }> {
   const period = monthPeriod(today);
   const bounds = monthBounds(period);
   const currentMonth = parseInt(period.slice(5, 7), 10);
-  await issueGift(db, { phone: customer.phone, type: "joining", period: "once", validFrom: addDays(today, 1), validUntil: null });
+  const joiningIssued = await issueGift(db, { phone: customer.phone, type: "joining", period: "once", validFrom: addDays(today, 1), validUntil: null });
   // getBirthMonth parses the month out of any stored date string (dob or wedding).
   if (getBirthMonth(customer.dob) === currentMonth) {
     await issueGift(db, { phone: customer.phone, type: "birthday", period, validFrom: bounds.from, validUntil: bounds.until });
@@ -117,6 +119,7 @@ export async function issueSignupGifts(
   if (customer.wedding && getBirthMonth(customer.wedding) === currentMonth) {
     await issueGift(db, { phone: customer.phone, type: "anniversary", period, validFrom: bounds.from, validUntil: bounds.until });
   }
+  return { joiningIssued };
 }
 
 /**
@@ -236,12 +239,15 @@ export async function searchCustomersWithGifts(
   const byPhone = new Map<string, WaiterGift[]>();
   for (const raw of giftRows) {
     const g = mapGiftRow(raw);
+    const status = giftStatus(g, today);
+    // Expired gifts can never be redeemed — leave them off the tablet.
+    if (status === "expired") continue;
     const list = byPhone.get(g.phone) ?? [];
     list.push({
       id: g.id,
       type: g.type,
       label: GIFT_LABELS[g.type] ?? g.type,
-      status: giftStatus(g, today),
+      status,
       valid_from: g.valid_from,
       valid_until: g.valid_until,
       redeemed_at: g.redeemed_at,

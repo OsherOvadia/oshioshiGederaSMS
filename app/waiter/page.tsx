@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionRole } from "@/lib/auth";
 import WaiterPanel from "./WaiterPanel";
@@ -9,7 +10,14 @@ export default async function WaiterPage() {
   if (role !== "waiter" && role !== "admin") redirect("/login");
   return (
     <main className="container waiter-page">
-      <h1>מסך מלצרים 🍣</h1>
+      <div className="admin-header">
+        <h1 className="admin-title">מסך מלצרים 🍣</h1>
+        <div className="admin-actions">
+          <Link href="/api/logout" className="admin-btn admin-btn-logout">
+            יציאה
+          </Link>
+        </div>
+      </div>
       <p className="waiter-sub">חיפוש לקוח לפי שם או טלפון, וסימון מתנות שמומשו.</p>
       <WaiterPanel />
     </main>

@@ -9,6 +9,10 @@ export function welcomeSms(name: string): string {
   return `${BRAND}: היי ${name}, איזה כיף שהצטרפת אלינו! 🍣 מחכה לך מתנת הצטרפות במסעדה החל ממחר, ומעכשיו המבצעים, ההטבות וה-1+1 מגיעים ישירות אליך.`;
 }
 
+export function welcomeBackSms(name: string): string {
+  return `${BRAND}: היי ${name}, איזה כיף שחזרת אלינו! 🍣 מעכשיו המבצעים, ההטבות וה-1+1 שוב מגיעים ישירות אליך.`;
+}
+
 export function birthdaySms(name: string): string {
   return `${BRAND}: היי ${name}, חוגג/ת יום הולדת החודש? 🎂 מזל טוב! מחכה לך מתנת יום הולדת במסעדה. בואו לחגוג איתנו! 🍣`;
 }
