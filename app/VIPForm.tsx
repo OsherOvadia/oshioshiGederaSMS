@@ -9,6 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   already_registered: "אתם כבר רשומים למועדון! המספר שלכם כבר קיים במערכת.",
   system: "תקלה במערכת",
   rate: "יותר מדי בקשות. נסו שוב מאוחר יותר.",
+  consent: "כדי להצטרף למועדון יש לאשר קבלת הודעות SMS",
 };
 
 // Optional business contact for the success screen; buttons hide when unset.
@@ -133,16 +134,26 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
           <label htmlFor="city">עיר *</label>
           <input type="text" id="city" name="city" placeholder="גדרה" maxLength={50} required />
         </div>
+        <div className="form-group consent-group">
+          <label className="consent-label">
+            <input type="checkbox" name="consent" required />
+            <span>
+              אני מאשר/ת קבלת הודעות SMS פרסומיות ושיווקיות ממועדון הלקוחות של Oshi Oshi גדרה — כולל
+              מבצעים, הטבות, 1+1 ועדכונים — למספר שמסרתי, בהתאם ל
+              <a href="/terms" target="_blank" rel="noopener noreferrer">
+                תקנון המועדון ומדיניות הפרטיות
+              </a>
+              . ניתן להסיר את ההסכמה בכל עת, ללא עלות, במענה &quot;{unsubKeyword}&quot; לכל הודעה או
+              בקישור ההסרה שבה.
+            </span>
+          </label>
+        </div>
         <button type="submit" disabled={loading}>
           {loading ? "שולח..." : "אני בפנים 🍣"}
         </button>
       </form>
       <p id="form-feedback" role="alert" aria-live="assertive" className="error" style={{ marginTop: "14px", marginBottom: 0 }}>
         {error}
-      </p>
-      <p className="consent">
-        בלחיצה על &quot;אני בפנים&quot; אני מאשר/ת קבלת הודעות ועדכונים פרסומיים ב-SMS ממועדון הלקוחות.
-        ניתן להסיר את עצמכם בכל עת בהשבת &quot;{unsubKeyword}&quot; לכל הודעה או בלחיצה על קישור ההסרה שבה.
       </p>
     </>
   );

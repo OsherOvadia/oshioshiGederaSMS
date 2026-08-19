@@ -835,3 +835,25 @@ a:hover {
     width: 100%;
   }
 }
+
+.consent-group {
+  margin-top: 4px;
+}
+.consent-label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.consent-label input[type="checkbox"] {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: currentColor;
+}
+.consent-label a {
+  text-decoration: underline;
+}
