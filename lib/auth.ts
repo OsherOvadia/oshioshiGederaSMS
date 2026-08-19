@@ -3,37 +3,43 @@ import { cookies } from "next/headers";
 import {
   COOKIE_NAME,
   createSessionJwt,
-  verifySessionToken,
+  getTokenRole,
   getCookieOptions,
+  type SessionRole,
 } from "./session-jwt";
 
-export async function setAdminSession(): Promise<void> {
-  const token = await createSessionJwt();
+export async function setSession(role: SessionRole): Promise<void> {
+  const token = await createSessionJwt(role);
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, getCookieOptions());
 }
 
-export async function getAdminSession(): Promise<boolean> {
+/** Role of the current session, refreshing the cookie when valid. */
+export async function getSessionRole(): Promise<SessionRole | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
-    if (!token) return false;
-    const valid = await verifySessionToken(token);
-    if (!valid) return false;
+    if (!token) return null;
+    const role = await getTokenRole(token);
+    if (!role) return null;
     try {
-      await setAdminSession();
+      await setSession(role);
     } catch {
       // Cookie refresh failed; token is still valid, allow access
     }
-    return true;
+    return role;
   } catch {
-    return false;
+    return null;
   }
 }
 
+export async function getAdminSession(): Promise<boolean> {
+  return (await getSessionRole()) === "admin";
+}
+
 /** Call this on any admin API response (redirect or file) so the browser keeps the session. */
-export async function attachSessionCookie(res: NextResponse): Promise<NextResponse> {
-  const token = await createSessionJwt();
+export async function attachSessionCookie(res: NextResponse, role: SessionRole = "admin"): Promise<NextResponse> {
+  const token = await createSessionJwt(role);
   res.cookies.set(COOKIE_NAME, token, getCookieOptions());
   return res;
 }

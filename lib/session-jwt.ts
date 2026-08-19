@@ -24,19 +24,32 @@ export function getCookieOptions(): { httpOnly: boolean; secure: boolean; sameSi
   };
 }
 
-export async function createSessionJwt(): Promise<string> {
-  const token = await new SignJWT({ admin: true })
+export type SessionRole = "admin" | "waiter";
+
+export async function createSessionJwt(role: SessionRole = "admin"): Promise<string> {
+  // `admin: true` kept on admin tokens for backward compatibility with
+  // sessions issued before roles existed.
+  const claims: Record<string, unknown> = role === "admin" ? { role, admin: true } : { role };
+  const token = await new SignJWT(claims)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(getSecret());
   return token;
 }
 
-export async function verifySessionToken(token: string): Promise<boolean> {
+/** Role carried by a session token, or null when missing/invalid/expired. */
+export async function getTokenRole(token: string): Promise<SessionRole | null> {
   try {
-    await jwtVerify(token, getSecret());
-    return true;
+    const { payload } = await jwtVerify(token, getSecret());
+    if (payload.role === "waiter") return "waiter";
+    if (payload.role === "admin" || payload.admin === true) return "admin";
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Admin-only check — every existing admin surface gates on this. */
+export async function verifySessionToken(token: string): Promise<boolean> {
+  return (await getTokenRole(token)) === "admin";
 }

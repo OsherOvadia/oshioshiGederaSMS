@@ -26,3 +26,28 @@ export function verifyAdminPassword(input: string): boolean {
     return false;
   }
 }
+
+function constantTimeEquals(a: string, b: string): boolean {
+  const ba = Buffer.from(String(a ?? ""), "utf8");
+  const bb = Buffer.from(String(b ?? ""), "utf8");
+  if (ba.length !== bb.length) return false;
+  try {
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Single waiter account from env. Both vars must be set for the account to
+ * exist at all; username matches case-insensitively, password exactly.
+ */
+export function verifyWaiterCredentials(username: string, password: string): boolean {
+  const expectedUser = (process.env.WAITER_USERNAME ?? "").trim();
+  const expectedPass = process.env.WAITER_PASSWORD ?? "";
+  if (!expectedUser || !expectedPass) return false;
+  return (
+    constantTimeEquals(String(username ?? "").trim().toLowerCase(), expectedUser.toLowerCase()) &&
+    constantTimeEquals(String(password ?? ""), expectedPass)
+  );
+}
