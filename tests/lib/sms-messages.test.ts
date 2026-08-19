@@ -1,0 +1,19 @@
+import { describe, it, expect } from "vitest";
+import { BRAND, welcomeSms, birthdaySms, anniversarySms } from "@/lib/sms-messages";
+
+describe("sms messages", () => {
+  it("brand is Oshi Oshi Gedera", () => {
+    expect(BRAND).toBe("Oshi Oshi Gedera");
+  });
+  // Israeli Spam Law §30A(e)(2): every promo SMS must carry the advertiser name.
+  it("every message starts with the brand and includes the name", () => {
+    for (const msg of [welcomeSms("דנה"), birthdaySms("דנה"), anniversarySms("דנה")]) {
+      expect(msg.startsWith(`${BRAND}:`)).toBe(true);
+      expect(msg).toContain("דנה");
+    }
+  });
+  it("welcome message mentions the joining gift starting tomorrow", () => {
+    expect(welcomeSms("דנה")).toContain("מתנת הצטרפות");
+    expect(welcomeSms("דנה")).toContain("החל ממחר");
+  });
+});
