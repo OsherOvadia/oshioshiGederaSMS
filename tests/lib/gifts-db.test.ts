@@ -1,0 +1,158 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { applySchema, type DbConnection } from "@/lib/db";
+import {
+  issueGift,
+  issueSignupGifts,
+  issueMonthlyGifts,
+  redeemGift,
+  searchCustomersWithGifts,
+} from "@/lib/gifts";
+
+function memoryDb(): DbConnection {
+  const BetterSqlite3 = require("better-sqlite3");
+  return { type: "sqlite", conn: BetterSqlite3(":memory:") } as DbConnection;
+}
+
+async function seedCustomer(
+  db: DbConnection,
+  phone: string,
+  opts: { name?: string; dob?: string; wedding?: string; active?: number } = {}
+) {
+  if (db.type !== "sqlite") throw new Error("expected sqlite");
+  db.conn
+    .prepare(
+      "INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(phone, opts.name ?? "דנה", "a@b.co", opts.dob ?? "1990-08-15", opts.wedding ?? "", "גדרה", opts.active ?? 1);
+}
+
+let db: DbConnection;
+beforeEach(async () => {
+  db = memoryDb();
+  await applySchema(db);
+});
+
+describe("issueGift", () => {
+  it("inserts once and silently ignores duplicates", async () => {
+    const first = await issueGift(db, {
+      phone: "+972501111111",
+      type: "joining",
+      period: "once",
+      validFrom: "2026-08-20",
+      validUntil: null,
+    });
+    const second = await issueGift(db, {
+      phone: "+972501111111",
+      type: "joining",
+      period: "once",
+      validFrom: "2026-08-20",
+      validUntil: null,
+    });
+    expect(first).toBe(true);
+    expect(second).toBe(false);
+  });
+});
+
+describe("issueSignupGifts", () => {
+  it("creates a joining gift valid from the next day", async () => {
+    await seedCustomer(db, "+972501111111", { dob: "1990-01-15" });
+    await issueSignupGifts(db, { phone: "+972501111111", dob: "1990-01-15", wedding: "" }, "2026-08-19");
+    const [c] = await searchCustomersWithGifts(db, "0501111111", "2026-08-19");
+    expect(c.gifts).toHaveLength(1);
+    expect(c.gifts[0].type).toBe("joining");
+    expect(c.gifts[0].valid_from).toBe("2026-08-20");
+    expect(c.gifts[0].status).toBe("not_yet"); // signup day itself
+  });
+
+  it("also creates birthday/anniversary gifts when the month matches", async () => {
+    await seedCustomer(db, "+972502222222", { dob: "1990-08-15", wedding: "2015-08-01" });
+    await issueSignupGifts(db, { phone: "+972502222222", dob: "1990-08-15", wedding: "2015-08-01" }, "2026-08-19");
+    const [c] = await searchCustomersWithGifts(db, "0502222222", "2026-08-19");
+    const types = c.gifts.map((g) => g.type).sort();
+    expect(types).toEqual(["anniversary", "birthday", "joining"]);
+    const bday = c.gifts.find((g) => g.type === "birthday")!;
+    expect(bday.valid_from).toBe("2026-08-01");
+    expect(bday.valid_until).toBe("2026-08-31");
+    expect(bday.status).toBe("available");
+  });
+});
+
+describe("issueMonthlyGifts", () => {
+  it("issues gifts to this month's celebrants only, skipping inactive members", async () => {
+    await seedCustomer(db, "+972501111111", { name: "אבי", dob: "1990-08-15" }); // birthday this month
+    await seedCustomer(db, "+972502222222", { name: "בני", dob: "1991-03-02", wedding: "2010-08-20" }); // anniversary
+    await seedCustomer(db, "+972503333333", { name: "גדי", dob: "1992-01-01" }); // nothing this month
+    await seedCustomer(db, "+972504444444", { name: "דנה", dob: "1993-08-05", active: 0 }); // unsubscribed
+    const res = await issueMonthlyGifts(db, "2026-08-01");
+    expect(res.birthday).toEqual([["+972501111111", "אבי"]]);
+    expect(res.anniversary).toEqual([["+972502222222", "בני"]]);
+    // Re-run: no duplicates, same celebrant lists
+    const again = await issueMonthlyGifts(db, "2026-08-01");
+    expect(again.birthday).toEqual([["+972501111111", "אבי"]]);
+  });
+});
+
+describe("redeemGift", () => {
+  async function issueJoining(phone: string) {
+    await seedCustomer(db, phone);
+    await issueGift(db, { phone, type: "joining", period: "once", validFrom: "2026-08-20", validUntil: null });
+    const [c] = await searchCustomersWithGifts(db, phone.replace("+972", "0"), "2026-08-20");
+    return c.gifts[0].id;
+  }
+
+  it("redeems an available gift exactly once", async () => {
+    const id = await issueJoining("+972501111111");
+    expect(await redeemGift(db, id, "waiter", "2026-08-20")).toBe(true);
+    expect(await redeemGift(db, id, "waiter", "2026-08-20")).toBe(false); // no double redemption
+  });
+
+  it("refuses redemption before valid_from (joining reward day-after rule)", async () => {
+    const id = await issueJoining("+972501111111");
+    expect(await redeemGift(db, id, "waiter", "2026-08-19")).toBe(false);
+  });
+
+  it("refuses redemption after valid_until", async () => {
+    await seedCustomer(db, "+972505555555");
+    await issueGift(db, {
+      phone: "+972505555555",
+      type: "birthday",
+      period: "2026-08",
+      validFrom: "2026-08-01",
+      validUntil: "2026-08-31",
+    });
+    const [c] = await searchCustomersWithGifts(db, "0505555555", "2026-08-15");
+    expect(await redeemGift(db, c.gifts[0].id, "waiter", "2026-09-01")).toBe(false);
+    expect(await redeemGift(db, c.gifts[0].id, "waiter", "2026-08-31")).toBe(true);
+  });
+
+  it("refuses redemption for inactive customers", async () => {
+    await seedCustomer(db, "+972506666666", { active: 0 });
+    await issueGift(db, { phone: "+972506666666", type: "joining", period: "once", validFrom: "2026-08-01", validUntil: null });
+    if (db.type !== "sqlite") throw new Error("expected sqlite");
+    const row = db.conn.prepare("SELECT id FROM gifts WHERE phone = ?").get("+972506666666") as { id: number };
+    expect(await redeemGift(db, row.id, "waiter", "2026-08-20")).toBe(false);
+  });
+});
+
+describe("searchCustomersWithGifts", () => {
+  it("returns only name and phone (plus gifts) for matching active customers", async () => {
+    await seedCustomer(db, "+972501111111", { name: "אבי כהן" });
+    await seedCustomer(db, "+972502222222", { name: "אבי לוי", active: 0 });
+    const results = await searchCustomersWithGifts(db, "אבי", "2026-08-19");
+    expect(results).toHaveLength(1);
+    expect(Object.keys(results[0]).sort()).toEqual(["gifts", "name", "phone"]);
+    expect(results[0].name).toBe("אבי כהן");
+  });
+
+  it("matches by partial phone digits", async () => {
+    await seedCustomer(db, "+972501234567", { name: "רות" });
+    const results = await searchCustomersWithGifts(db, "0501234", "2026-08-19");
+    expect(results).toHaveLength(1);
+    expect(results[0].phone).toBe("+972501234567");
+  });
+
+  it("returns [] for a blank query instead of listing everyone", async () => {
+    await seedCustomer(db, "+972501111111");
+    expect(await searchCustomersWithGifts(db, "  ", "2026-08-19")).toEqual([]);
+  });
+});
