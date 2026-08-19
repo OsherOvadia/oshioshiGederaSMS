@@ -857,3 +857,23 @@ a:hover {
 .consent-label a {
   text-decoration: underline;
 }
+
+.terms-page {
+  padding-bottom: 48px;
+}
+.terms-page h1 {
+  font-size: 1.6rem;
+  margin-bottom: 4px;
+}
+.terms-page h2 {
+  font-size: 1.1rem;
+  margin: 20px 0 6px;
+}
+.terms-page p {
+  line-height: 1.7;
+}
+.terms-updated,
+.terms-draft-note {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
