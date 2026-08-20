@@ -167,10 +167,36 @@ export async function issueMonthlyGifts(
 }
 
 /**
+ * True when this gift is a celebration gift for the very month its owner
+ * joined the club — which must never be redeemable (see issueSignupGifts).
+ * Checked at redemption as well as issuance so a row written by an older
+ * version of the app, or by any future bug, still can't be handed out.
+ */
+async function isSameMonthJoinerGift(db: DbConnection, giftId: number): Promise<boolean> {
+  const rows = await queryCustomers(
+    db,
+    `SELECT g.type AS gift_type, g.period AS gift_period, c.created_at AS joined
+     FROM gifts g JOIN customers c ON c.phone = g.phone
+     WHERE g.id = $1`,
+    [giftId]
+  );
+  const row = rows[0];
+  if (!row) return false; // no such gift; the UPDATE below will no-op anyway
+  if (String(row.gift_type) === "joining") return false;
+  const joined = toIsraelDateStr(row.joined as string | null);
+  return !!joined && monthPeriod(joined) === String(row.gift_period);
+}
+
+/**
  * Atomically redeem a gift. The single conditional UPDATE is the
  * double-redemption guard: two concurrent attempts can't both match
  * `redeemed_at IS NULL`. Also enforces the validity window and that the
  * customer is still an active member.
+ *
+ * The same-month-joiner pre-check ahead of it is safe to do as a separate
+ * read: a join date and a gift's period never change, so unlike
+ * `redeemed_at` there is nothing here to race against.
+ *
  * NOTE: the SQLite shim maps $N -> positional ?, so `today` is bound twice
  * ($4 and $5) instead of reusing one placeholder.
  */
@@ -180,6 +206,7 @@ export async function redeemGift(
   redeemedBy: string,
   today: string = israelToday()
 ): Promise<boolean> {
+  if (await isSameMonthJoinerGift(db, giftId)) return false;
   const now = new Date().toISOString();
   const activeTrue = db.type === "postgres" ? "TRUE" : "1";
   const { rowCount } = await runDb(
@@ -233,7 +260,7 @@ export async function searchCustomersWithGifts(
   const params: unknown[] = digits ? [`%${escaped}%`, `%${normDigits}%`] : [`%${escaped}%`];
   const custRows = await queryCustomers(
     db,
-    `SELECT phone, name FROM customers WHERE ${activeCondition} AND (name ${nameOp} $1 ESCAPE '\\'${phoneClause}) ORDER BY name ASC LIMIT 20`,
+    `SELECT phone, name, created_at FROM customers WHERE ${activeCondition} AND (name ${nameOp} $1 ESCAPE '\\'${phoneClause}) ORDER BY name ASC LIMIT 20`,
     params
   );
   return attachGifts(db, custRows, today);
@@ -251,7 +278,7 @@ export async function listActiveCustomersWithGifts(
   const activeCondition = db.type === "postgres" ? "active = TRUE" : "active = 1";
   const custRows = await queryCustomers(
     db,
-    `SELECT phone, name FROM customers WHERE ${activeCondition} ORDER BY name ASC LIMIT ${WAITER_LIST_LIMIT}`,
+    `SELECT phone, name, created_at FROM customers WHERE ${activeCondition} ORDER BY name ASC LIMIT ${WAITER_LIST_LIMIT}`,
     []
   );
   return attachGifts(db, custRows, today);
@@ -261,8 +288,12 @@ export async function listActiveCustomersWithGifts(
 export const WAITER_LIST_LIMIT = 2000;
 
 /**
- * Attach each customer's non-expired gifts. Expired gifts can never be
- * redeemed, so they are left off the tablet entirely.
+ * Attach each customer's gifts. Two kinds are left off the tablet entirely
+ * because they can never be redeemed: expired ones, and celebration gifts for
+ * the member's own join month (see issueSignupGifts — older app versions did
+ * write those, so the screen must not offer a button that would only 409).
+ *
+ * custRows must include created_at; it is used here and never returned.
  */
 async function attachGifts(
   db: DbConnection,
@@ -271,6 +302,11 @@ async function attachGifts(
 ): Promise<WaiterCustomer[]> {
   if (custRows.length === 0) return [];
   const phones = custRows.map((r) => String(r.phone));
+  const joinPeriodByPhone = new Map<string, string | null>();
+  for (const r of custRows) {
+    const joined = toIsraelDateStr(r.created_at as string | null);
+    joinPeriodByPhone.set(String(r.phone), joined ? monthPeriod(joined) : null);
+  }
   const placeholders = phones.map((_, i) => `$${i + 1}`).join(", ");
   const giftRows = await queryCustomers(
     db,
@@ -283,6 +319,7 @@ async function attachGifts(
     const g = mapGiftRow(raw);
     const status = giftStatus(g, today);
     if (status === "expired") continue;
+    if (g.type !== "joining" && joinPeriodByPhone.get(g.phone) === g.period) continue;
     const list = byPhone.get(g.phone) ?? [];
     list.push({
       id: g.id,

@@ -253,15 +253,21 @@ describe("postgres SQL branch", () => {
     // Returns [] because the fake yields no rows — the SQL capture is the point.
     expect(await searchCustomersWithGifts(fake, "0501234", "2026-08-19")).toEqual([]);
 
-    const issueSql = captured[0].sql;
+    // Located by content, not by index: the statement order changes whenever a
+    // guard query is added, and that shouldn't break a dialect assertion.
+    const find = (needle: string) => captured.find((c) => c.sql.includes(needle))?.sql;
+
+    const issueSql = find("INSERT INTO gifts");
     expect(issueSql).toContain("ON CONFLICT (phone, type, period) DO NOTHING");
     expect(issueSql).not.toContain("OR IGNORE");
 
-    const redeemSql = captured[1].sql;
+    const redeemSql = find("UPDATE gifts SET");
     expect(redeemSql).toContain("active = TRUE");
     expect(redeemSql).not.toContain("active = 1");
 
-    const searchSql = captured[2].sql;
+    // "ESCAPE" is unique to the name-search statement (the redeem UPDATE also
+    // contains a "FROM customers WHERE" subquery).
+    const searchSql = find("ESCAPE");
     expect(searchSql).toContain("ILIKE");
 
     // The SQLite shim rewrites each $N to a positional ? — so every statement
@@ -319,5 +325,46 @@ describe("same-month joiner rule (issueMonthlyGifts)", () => {
     await seedCustomer(db, "+972504444444", { name: "יולי", dob: "1990-08-09", joined: "2026-07-28 10:00:00" });
     const res = await issueMonthlyGifts(db, "2026-08-01");
     expect(res.birthday).toEqual([["+972504444444", "יולי"]]);
+  });
+});
+
+describe("legacy same-month celebration gifts are unusable", () => {
+  // Simulates a row written by an older app version that granted the gift at
+  // signup: member joined in 2026-08 and holds a 2026-08 birthday gift.
+  async function seedLegacyRow() {
+    await seedCustomer(db, "+972508888888", { name: "לגסי", dob: "1990-08-10", joined: "2026-08-19 08:00:00" });
+    await issueGift(db, {
+      phone: "+972508888888",
+      type: "birthday",
+      period: "2026-08",
+      validFrom: "2026-08-01",
+      validUntil: "2026-08-31",
+    });
+    if (db.type !== "sqlite") throw new Error("expected sqlite");
+    const row = db.conn.prepare("SELECT id FROM gifts WHERE phone = ?").get("+972508888888") as { id: number };
+    return row.id;
+  }
+
+  it("refuses redemption even though the validity window is open", async () => {
+    const id = await seedLegacyRow();
+    expect(await redeemGift(db, id, "waiter", "2026-08-25")).toBe(false);
+  });
+
+  it("is hidden from the waiter list and search", async () => {
+    await seedLegacyRow();
+    const [fromList] = await listActiveCustomersWithGifts(db, "2026-08-25");
+    expect(fromList.gifts).toEqual([]);
+    const [fromSearch] = await searchCustomersWithGifts(db, "לגסי", "2026-08-25");
+    expect(fromSearch.gifts).toEqual([]);
+  });
+
+  it("does not affect the joining gift or a later period", async () => {
+    await seedCustomer(db, "+972509999999", { name: "תקין", dob: "1990-08-10", joined: "2026-07-19 08:00:00" });
+    await issueGift(db, { phone: "+972509999999", type: "joining", period: "once", validFrom: "2026-07-20", validUntil: null });
+    await issueGift(db, { phone: "+972509999999", type: "birthday", period: "2026-08", validFrom: "2026-08-01", validUntil: "2026-08-31" });
+    const [c] = await listActiveCustomersWithGifts(db, "2026-08-25");
+    expect(c.gifts.map((g) => g.type).sort()).toEqual(["birthday", "joining"]);
+    const bday = c.gifts.find((g) => g.type === "birthday")!;
+    expect(await redeemGift(db, bday.id, "waiter", "2026-08-25")).toBe(true);
   });
 });
