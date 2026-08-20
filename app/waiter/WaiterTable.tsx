@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 
 // One column per reward type, in the order a waiter is most likely to need it.
 const COLUMNS = [
-  { type: "joining", label: "מתנת הצטרפות" },
-  { type: "birthday", label: "מתנת יום הולדת" },
-  { type: "anniversary", label: "מתנת יום נישואין" },
+  { type: "joining", label: "הצטרפות", full: "מתנת הצטרפות" },
+  { type: "birthday", label: "יום הולדת", full: "מתנת יום הולדת" },
+  { type: "anniversary", label: "יום נישואין", full: "מתנת יום נישואין" },
 ] as const;
 
 // The list is filtered in the browser, so keep the DOM bounded on a tablet.
 const RENDER_LIMIT = 150;
+// Cap the load-in stagger so a long list doesn't animate for seconds.
+const STAGGER_CAP = 14;
 
 export type WaiterGiftView = {
   id: number;
@@ -34,8 +36,8 @@ function localPhone(phone: string): string {
 
 function shortDate(iso: string | null): string {
   if (!iso) return "";
-  const d = iso.slice(0, 10).split("-");
-  return d.length === 3 ? `${d[2]}/${d[1]}` : iso;
+  const p = iso.slice(0, 10).split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}` : iso;
 }
 
 export default function WaiterTable({ customers }: { customers: WaiterCustomerView[] }) {
@@ -55,13 +57,17 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
     return customers.filter((c) => {
       if (c.name.toLowerCase().includes(q)) return true;
       if (!qDigits) return false;
-      const phoneDigits = c.phone.replace(/\D/g, "");
-      return phoneDigits.includes(qDigits) || localPhone(c.phone).replace(/\D/g, "").includes(qDigits);
+      const stored = c.phone.replace(/\D/g, "");
+      return stored.includes(qDigits) || localPhone(c.phone).replace(/\D/g, "").includes(qDigits);
     });
   }, [customers, deferredQuery]);
 
   const shown = filtered.slice(0, RENDER_LIMIT);
   const hasQuery = deferredQuery.trim() !== "";
+  const readyCount = useMemo(
+    () => filtered.reduce((n, c) => n + c.gifts.filter((g) => g.status === "available").length, 0),
+    [filtered]
+  );
 
   async function redeem(customerName: string, gift: WaiterGiftView) {
     if (!window.confirm(`לאשר מימוש "${gift.label}" עבור ${customerName}? פעולה זו אינה ניתנת לביטול.`)) return;
@@ -92,94 +98,159 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
     } finally {
       setBusyGiftId(null);
     }
-    if (ok) setFlash(`${gift.label} של ${customerName} סומנה כמומשה ✓`);
+    if (ok) setFlash(`${gift.label} · ${customerName} — סומנה כמומשה`);
     if (message) setError(message);
-    // Re-read from the server either way, so the table always shows truth.
+    // Re-read from the server either way, so the screen always shows truth.
     router.refresh();
   }
 
-  function GiftCell({ customer, type }: { customer: WaiterCustomerView; type: string }) {
+  function Reward({ customer, type }: { customer: WaiterCustomerView; type: string }) {
     // Newest first: if a member somehow holds two gifts of one type, the
     // actionable one should be on top.
     const gifts = customer.gifts.filter((g) => g.type === type).sort((a, b) => b.id - a.id);
-    if (gifts.length === 0) return <span className="gift-none">—</span>;
+    if (gifts.length === 0) return <span className="rw-empty" aria-label="אין מתנה">·</span>;
     return (
-      <>
-        {gifts.map((g) => (
-          <div key={g.id} className={`gift-cell status-${g.status}`}>
-            {g.status === "available" && (
+      <div className="rw-stack">
+        {gifts.map((g) => {
+          if (g.status === "available") {
+            return (
               <button
+                key={g.id}
                 type="button"
-                className="redeem-btn"
+                className="rw-btn"
                 disabled={busyGiftId !== null}
                 onClick={() => redeem(customer.name, g)}
+                title={g.valid_until ? `בתוקף עד ${shortDate(g.valid_until)}` : "ללא תוקף"}
               >
-                {busyGiftId === g.id ? "רגע..." : "סמן כמומשה"}
+                <span className="rw-btn-label">{busyGiftId === g.id ? "רגע…" : "מימוש"}</span>
+                {g.valid_until && <span className="rw-btn-sub">עד {shortDate(g.valid_until)}</span>}
               </button>
-            )}
-            {g.status === "not_yet" && <span className="gift-note">זמינה מ-{shortDate(g.valid_from)}</span>}
-            {g.status === "used" && <span className="gift-note gift-used">מומשה {shortDate(g.redeemed_at)}</span>}
-            {g.status === "available" && g.valid_until && (
-              <span className="gift-note">עד {shortDate(g.valid_until)}</span>
-            )}
-          </div>
-        ))}
-      </>
+            );
+          }
+          if (g.status === "not_yet") {
+            return (
+              <span key={g.id} className="rw-chip rw-chip-wait">
+                מ־{shortDate(g.valid_from)}
+              </span>
+            );
+          }
+          return (
+            <span key={g.id} className="rw-chip rw-chip-used">
+              ✓ {shortDate(g.redeemed_at)}
+            </span>
+          );
+        })}
+      </div>
     );
   }
 
   return (
     <>
-      <input
-        type="search"
-        className="table-search waiter-search"
-        placeholder="חיפוש לפי שם או טלפון..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label="חיפוש לקוח לפי שם או טלפון"
-        autoComplete="off"
-      />
-      <p className="waiter-count">
-        {hasQuery ? `${filtered.length} תוצאות מתוך ${customers.length}` : `${customers.length} לקוחות`}
-        {filtered.length > RENDER_LIMIT && ` · מציג ${RENDER_LIMIT} ראשונים — חפשו כדי לצמצם`}
-      </p>
-      {flash && <p className="waiter-flash" role="status">{flash}</p>}
-      {error && <p className="error" role="alert">{error}</p>}
+      <div className="wt-search">
+        <span className="wt-search-icon" aria-hidden="true">
+          ⌕
+        </span>
+        <input
+          type="search"
+          placeholder="שם או טלפון…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="חיפוש לקוח לפי שם או טלפון"
+          autoComplete="off"
+        />
+        {query && (
+          <button type="button" className="wt-search-clear" onClick={() => setQuery("")} aria-label="נקה חיפוש">
+            ✕
+          </button>
+        )}
+      </div>
 
-      <div className="admin-table-wrap">
-        <table className="admin-table waiter-table">
+      <div className="wt-meta">
+        <span>
+          <strong>{filtered.length}</strong> {hasQuery ? `מתוך ${customers.length}` : "לקוחות"}
+        </span>
+        <span className="wt-meta-dot" aria-hidden="true" />
+        <span className={readyCount > 0 ? "wt-ready" : "wt-ready wt-ready-none"}>
+          {readyCount > 0 ? `${readyCount} מתנות למימוש` : "אין מתנות למימוש"}
+        </span>
+      </div>
+
+      {flash && (
+        <p className="wt-flash" role="status">
+          {flash}
+        </p>
+      )}
+      {error && (
+        <p className="wt-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* Wide screens: one row per member, one column per reward */}
+      <div className="wt-table-wrap">
+        <table className="wt-table">
           <thead>
             <tr>
-              <th>שם</th>
-              <th>טלפון</th>
+              <th scope="col">לקוח</th>
               {COLUMNS.map((col) => (
-                <th key={col.type}>{col.label}</th>
+                <th scope="col" key={col.type} title={col.full}>
+                  {col.label}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {shown.length === 0 && (
               <tr>
-                <td colSpan={2 + COLUMNS.length} className="waiter-empty">
-                  {hasQuery ? "אין תוצאות" : "אין לקוחות להצגה"}
+                <td colSpan={1 + COLUMNS.length} className="wt-empty">
+                  {hasQuery ? "לא נמצא לקוח בשם או במספר הזה" : "אין לקוחות להצגה"}
                 </td>
               </tr>
             )}
-            {shown.map((c) => (
-              <tr key={c.phone}>
-                <td className="waiter-name">{c.name || "—"}</td>
-                <td className="waiter-phone">
-                  <a href={`tel:${c.phone}`}>{localPhone(c.phone)}</a>
-                </td>
+            {shown.map((c, i) => (
+              <tr key={c.phone} style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 35}ms` }}>
+                <th scope="row" className="wt-who">
+                  <span className="wt-name">{c.name || "—"}</span>
+                  <a className="wt-phone" href={`tel:${c.phone}`}>
+                    {localPhone(c.phone)}
+                  </a>
+                </th>
                 {COLUMNS.map((col) => (
-                  <td key={col.type} className="waiter-gift-col">
-                    <GiftCell customer={c} type={col.type} />
+                  <td key={col.type}>
+                    <Reward customer={c} type={col.type} />
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Narrow screens: a card per member — never a sideways scroll */}
+      <div className="wt-cards">
+        {shown.length === 0 && (
+          <p className="wt-empty">{hasQuery ? "לא נמצא לקוח בשם או במספר הזה" : "אין לקוחות להצגה"}</p>
+        )}
+        {shown.map((c, i) => (
+          <article key={c.phone} className="wt-card" style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 35}ms` }}>
+            <header className="wt-card-head">
+              <span className="wt-name">{c.name || "—"}</span>
+              <a className="wt-phone" href={`tel:${c.phone}`}>
+                {localPhone(c.phone)}
+              </a>
+            </header>
+            <dl className="wt-card-rewards">
+              {COLUMNS.map((col) => (
+                <div key={col.type} className="wt-card-row">
+                  <dt>{col.full}</dt>
+                  <dd>
+                    <Reward customer={c} type={col.type} />
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))}
       </div>
     </>
   );

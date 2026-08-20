@@ -1,4 +1,4 @@
-/* ───────────────────────── Design tokens — "Omakase Noir" ───────────────────────── */
+﻿/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Design tokens â€” "Omakase Noir" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   --bg: #0c0a09;
   --surface: rgba(22, 19, 17, 0.78);
@@ -35,7 +35,7 @@ body {
   padding: 16px;
 }
 
-/* ───────────────────────── Hero slideshow (rendered by HeroSlideshow.tsx) ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Hero slideshow (rendered by HeroSlideshow.tsx) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hero-bg {
   position: fixed;
   inset: 0;
@@ -95,7 +95,7 @@ body {
   }
 }
 
-/* ───────────────────────── Card / container ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Card / container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .container {
   position: relative;
   z-index: 1;
@@ -111,7 +111,7 @@ body {
   text-align: center;
 }
 
-/* ───────────────────────── Typography ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Typography â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .eyebrow {
   font-size: 12px;
   font-weight: 600;
@@ -166,7 +166,7 @@ p {
   object-fit: contain;
 }
 
-/* ───────────────────────── Benefits ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Benefits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .benefits {
   list-style: none;
   display: grid;
@@ -202,7 +202,7 @@ p {
   margin: 2px 0 0;
 }
 
-/* ───────────────────────── Forms ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Forms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .form-group {
   margin-bottom: 14px;
   text-align: right;
@@ -271,7 +271,7 @@ textarea {
   min-height: 80px;
 }
 
-/* ───────────────────────── Buttons ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 button {
   background: var(--accent);
   color: var(--on-accent);
@@ -329,7 +329,7 @@ button:disabled {
   color: #fff;
 }
 
-/* ───────────────────────── Feedback / misc ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Feedback / misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .success {
   color: var(--ok);
   font-weight: 700;
@@ -396,7 +396,7 @@ a:hover {
   margin-top: 16px;
 }
 
-/* ───────────────────────── Mobile (landing) ───────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mobile (landing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 600px) {
   body {
     padding: 10px;
@@ -419,7 +419,7 @@ a:hover {
   }
 }
 
-/* ═════════════════════════ Admin (light theme on dark body) ═════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Admin (light theme on dark body) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .admin-container {
   max-width: 960px;
   background: #f7f5f1;
@@ -671,7 +671,7 @@ a:hover {
   margin: 0;
 }
 
-/* Permanent delete — visually separated from the reversible block/restore action. */
+/* Permanent delete â€” visually separated from the reversible block/restore action. */
 .admin-table-btn-danger {
   color: #b71c1c;
   margin-inline-start: 10px;
@@ -884,133 +884,480 @@ a:hover {
   opacity: 0.7;
 }
 
-/* Waiter screen: one row per member, one column per reward type. */
-.waiter-sub {
-  opacity: 0.75;
-  margin: 0 0 14px;
-  font-size: 14px;
-}
 
-.waiter-search {
-  max-width: 420px;
-  font-size: 16px; /* keeps iOS from zooming the tablet view on focus */
-}
+/* ═════════════════════ Waiter screen — "Omakase Noir, service edition" ═════════════════════
+   A staff tool used on a tablet in a dim dining room: dark-native, gold only
+   where an action lives, and never a sideways scroll. */
 
-.waiter-count {
-  font-size: 13px;
-  color: #666;
-  margin: 0 0 10px;
-}
-
-.waiter-flash {
-  background: #e8f5e9;
-  border: 1px solid #a5d6a7;
-  color: #1b5e20;
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin: 0 0 10px;
-  font-size: 14px;
-}
-
-.waiter-table {
-  font-size: 14px;
-}
-
-.waiter-table thead tr {
-  background: #f5f5f5;
-  border-bottom: 2px solid var(--brand-red, #d32f2f);
-}
-
-.waiter-table th {
-  padding: 10px;
+.waiter-container {
+  max-width: 1080px;
   text-align: right;
-  white-space: nowrap;
+  padding: 26px 22px 30px;
 }
 
-.waiter-table td {
-  padding: 10px;
-  text-align: right;
-  border-bottom: 1px solid #eee;
-  vertical-align: top;
+.waiter-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin: 0 0 2px;
 }
 
-.waiter-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
-
-.waiter-name {
-  font-weight: 600;
-  min-width: 8rem;
-}
-
-.waiter-phone a {
-  direction: ltr;
-  unicode-bidi: embed;
-  white-space: nowrap;
-}
-
-.waiter-gift-col {
-  min-width: 8.5rem;
-}
-
-.gift-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.gift-cell + .gift-cell {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #e0e0e0;
-}
-
-.gift-none {
-  color: #bbb;
-}
-
-.gift-note {
-  font-size: 12px;
-  color: #666;
-}
-
-.gift-used {
-  color: #2e7d32;
-}
-
-/* Redemption is irreversible — make it a deliberate, clearly-hittable target. */
-.redeem-btn {
-  width: auto;
+.waiter-container h1 {
+  font-family: var(--font-display-stack);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 400;
+  letter-spacing: 0.01em;
   margin: 0;
-  padding: 8px 12px;
-  min-height: 40px;
-  font-size: 13px;
-  font-weight: 600;
+}
+
+.waiter-sub {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 6px 0 18px;
+  line-height: 1.5;
+}
+
+/* ── Search ─────────────────────────────────────────────────────────── */
+.wt-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 460px;
+  margin-bottom: 14px;
+}
+
+.wt-search-icon {
+  position: absolute;
+  inset-inline-start: 16px;
+  font-size: 19px;
+  color: var(--accent);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.wt-search input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px; /* 16px keeps iOS from zooming on focus */
+  padding: 14px 46px 14px 44px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.wt-search input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.wt-search input:focus {
+  outline: none;
+  background: rgba(0, 0, 0, 0.55);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(212, 168, 83, 0.16);
+}
+
+.wt-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.wt-search-clear {
+  position: absolute;
+  inset-inline-end: 8px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
   border: none;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--on-accent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-muted);
+  font-size: 13px;
   cursor: pointer;
 }
 
-.redeem-btn:disabled {
-  opacity: 0.55;
-  cursor: default;
+.wt-search-clear:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--text);
 }
 
-.waiter-empty {
-  padding: 20px;
+/* ── Meta line ──────────────────────────────────────────────────────── */
+.wt-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.wt-meta strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.wt-meta-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--glass-border);
+}
+
+.wt-ready {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.wt-ready-none {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ── Banners ────────────────────────────────────────────────────────── */
+.wt-flash,
+.wt-error {
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  border: 1px solid;
+  animation: wt-in 0.25s ease both;
+}
+
+.wt-flash {
+  background: rgba(129, 199, 132, 0.12);
+  border-color: rgba(129, 199, 132, 0.4);
+  color: var(--ok);
+}
+
+.wt-error {
+  background: rgba(239, 83, 80, 0.12);
+  border-color: rgba(239, 83, 80, 0.42);
+  color: #ffb4b2;
+}
+
+/* ── Table (wide screens) ───────────────────────────────────────────── */
+.wt-table-wrap {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.wt-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wt-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #17130f;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   text-align: center;
-  color: #666;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--glass-border);
+  white-space: nowrap;
 }
 
-@media (max-width: 700px) {
-  .waiter-table {
+.wt-table thead th:first-child {
+  text-align: right;
+  padding-inline-start: 18px;
+}
+
+.wt-table tbody tr {
+  animation: wt-row 0.3s ease both;
+  transition: background 0.15s ease;
+}
+
+.wt-table tbody tr:not(:last-child) th,
+.wt-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(212, 168, 83, 0.1);
+}
+
+.wt-table tbody tr:hover {
+  background: rgba(212, 168, 83, 0.05);
+}
+
+.wt-table td {
+  padding: 12px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.wt-who {
+  text-align: right;
+  padding: 12px 18px 12px 10px;
+  font-weight: 400;
+  min-width: 11rem;
+}
+
+.wt-name {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.wt-phone {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: embed;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-top: 2px;
+}
+
+.wt-phone:hover {
+  color: var(--accent);
+}
+
+.wt-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ── Reward cells ───────────────────────────────────────────────────── */
+.rw-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rw-empty {
+  color: rgba(168, 162, 158, 0.35);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* The only gold in the row: gold means "you can act on this now". */
+.rw-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: var(--on-accent);
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(212, 168, 83, 0.24);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.rw-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 5px 18px rgba(212, 168, 83, 0.34);
+}
+
+.rw-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+.rw-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
+.rw-btn-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.rw-btn-sub {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+
+.rw-chip {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rw-chip-wait {
+  border: 1px dashed rgba(212, 168, 83, 0.35);
+  color: var(--text-muted);
+}
+
+.rw-chip-used {
+  background: rgba(129, 199, 132, 0.12);
+  border: 1px solid rgba(129, 199, 132, 0.3);
+  color: var(--ok);
+}
+
+/* ── Cards (narrow screens) ─────────────────────────────────────────── */
+.wt-cards {
+  display: none;
+}
+
+.wt-card {
+  background: rgba(0, 0, 0, 0.26);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  animation: wt-row 0.3s ease both;
+}
+
+.wt-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(212, 168, 83, 0.12);
+}
+
+.wt-card-rewards {
+  margin: 0;
+}
+
+.wt-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.wt-card-row + .wt-card-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wt-card-row dt {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.wt-card-row dd {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .wt-table-wrap {
+    display: none;
+  }
+
+  .wt-cards {
+    display: grid;
+    gap: 10px;
+  }
+
+  .waiter-container {
+    padding: 20px 16px 24px;
+  }
+
+  .wt-search {
+    max-width: none;
+  }
+}
+
+/* ── Motion ─────────────────────────────────────────────────────────── */
+@keyframes wt-row {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-table tbody tr,
+  .wt-card,
+  .wt-flash,
+  .wt-error {
+    animation: none;
+  }
+
+  .rw-btn {
+    transition: none;
+  }
+}
+
+/* A tall table would be clipped by the body's vertical centering. */
+body:has(.waiter-container) {
+  align-items: flex-start;
+}
+
+/* Logout: quiet glass, so the only prominent control is a redemption. */
+.waiter-container .admin-btn-logout {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.waiter-container .admin-btn-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+
+.waiter-container .admin-title {
+  text-align: right;
+}
+
+/* Logout must never outrank a redemption button on a narrow screen. */
+@media (max-width: 519px) {
+  .waiter-container .admin-actions {
+    width: auto;
+  }
+
+  .waiter-container .admin-btn-logout {
+    padding: 8px 16px;
+    min-height: 38px;
     font-size: 13px;
   }
 
-  .waiter-table th,
-  .waiter-table td {
-    padding: 8px 6px;
+  .waiter-container .admin-header {
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .waiter-container .admin-title {
+    flex: 1 1 auto;
   }
 }
