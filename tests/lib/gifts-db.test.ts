@@ -17,14 +17,25 @@ function memoryDb(): DbConnection {
 async function seedCustomer(
   db: DbConnection,
   phone: string,
-  opts: { name?: string; dob?: string; wedding?: string; active?: number } = {}
+  opts: { name?: string; dob?: string; wedding?: string; active?: number; joined?: string } = {}
 ) {
   if (db.type !== "sqlite") throw new Error("expected sqlite");
   db.conn
     .prepare(
-      "INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO customers (phone, name, email, date_of_birth, wedding_day, city, active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .run(phone, opts.name ?? "דנה", "a@b.co", opts.dob ?? "1990-08-15", opts.wedding ?? "", "גדרה", opts.active ?? 1);
+    .run(
+      phone,
+      opts.name ?? "דנה",
+      "a@b.co",
+      opts.dob ?? "1990-08-15",
+      opts.wedding ?? "",
+      "גדרה",
+      opts.active ?? 1,
+      // Default to a long-standing member so the "joined this month" skip in
+      // issueMonthlyGifts doesn't silently swallow unrelated test cases.
+      opts.joined ?? "2020-01-15 09:00:00"
+    );
 }
 
 let db: DbConnection;
@@ -68,16 +79,31 @@ describe("issueSignupGifts", () => {
     expect(c.gifts[0].status).toBe("not_yet"); // signup day itself
   });
 
-  it("also creates birthday/anniversary gifts when the month matches", async () => {
-    await seedCustomer(db, "+972502222222", { dob: "1990-08-15", wedding: "2015-08-01" });
+  it("does NOT grant a same-month celebration gift — declaring this month buys nothing", async () => {
+    await seedCustomer(db, "+972502222222", { dob: "1990-08-15", wedding: "2015-08-01", joined: "2026-08-19 08:00:00" });
     await issueSignupGifts(db, { phone: "+972502222222", dob: "1990-08-15", wedding: "2015-08-01" }, "2026-08-19");
     const [c] = await searchCustomersWithGifts(db, "0502222222", "2026-08-19");
-    const types = c.gifts.map((g) => g.type).sort();
-    expect(types).toEqual(["anniversary", "birthday", "joining"]);
+    expect(c.gifts.map((g) => g.type)).toEqual(["joining"]);
+  });
+
+  it("still gets the celebration gift the following year, from the cron", async () => {
+    await seedCustomer(db, "+972502222222", { dob: "1990-08-15", joined: "2026-08-19 08:00:00" });
+    await issueSignupGifts(db, { phone: "+972502222222", dob: "1990-08-15", wedding: "" }, "2026-08-19");
+    // Next August the member is no longer a same-month joiner.
+    const res = await issueMonthlyGifts(db, "2027-08-01");
+    expect(res.birthday).toEqual([["+972502222222", "דנה"]]);
+    const [c] = await searchCustomersWithGifts(db, "0502222222", "2027-08-05");
     const bday = c.gifts.find((g) => g.type === "birthday")!;
-    expect(bday.valid_from).toBe("2026-08-01");
-    expect(bday.valid_until).toBe("2026-08-31");
+    expect(bday.valid_from).toBe("2027-08-01");
+    expect(bday.valid_until).toBe("2027-08-31");
     expect(bday.status).toBe("available");
+  });
+
+  it("a member who joins in August with a September birthday gets it on 1 September", async () => {
+    await seedCustomer(db, "+972507777777", { name: "ספטמבר", dob: "1990-09-10", joined: "2026-08-19 08:00:00" });
+    await issueSignupGifts(db, { phone: "+972507777777", dob: "1990-09-10", wedding: "" }, "2026-08-19");
+    const res = await issueMonthlyGifts(db, "2026-09-01");
+    expect(res.birthday).toEqual([["+972507777777", "ספטמבר"]]);
   });
 });
 
@@ -270,5 +296,28 @@ describe("listActiveCustomersWithGifts", () => {
   it("returns [] when there are no active customers", async () => {
     await seedCustomer(db, "+972509999999", { active: 0 });
     expect(await listActiveCustomersWithGifts(db, "2026-08-19")).toEqual([]);
+  });
+});
+
+describe("same-month joiner rule (issueMonthlyGifts)", () => {
+  it("skips a member who joined during the gift month, even on a cron re-run", async () => {
+    await seedCustomer(db, "+972501111111", { name: "חדש", dob: "1990-08-15", joined: "2026-08-03 10:00:00" });
+    await seedCustomer(db, "+972502222222", { name: "ותיק", dob: "1991-08-20", joined: "2025-02-02 10:00:00" });
+    const res = await issueMonthlyGifts(db, "2026-08-06");
+    expect(res.birthday).toEqual([["+972502222222", "ותיק"]]);
+    const [fresh] = await searchCustomersWithGifts(db, "0501111111", "2026-08-06");
+    expect(fresh.gifts).toEqual([]);
+  });
+
+  it("skips same-month joiners for anniversaries too", async () => {
+    await seedCustomer(db, "+972503333333", { name: "נישואין", wedding: "2015-08-04", joined: "2026-08-02 10:00:00" });
+    const res = await issueMonthlyGifts(db, "2026-08-06");
+    expect(res.anniversary).toEqual([]);
+  });
+
+  it("includes a member who joined the month before", async () => {
+    await seedCustomer(db, "+972504444444", { name: "יולי", dob: "1990-08-09", joined: "2026-07-28 10:00:00" });
+    const res = await issueMonthlyGifts(db, "2026-08-01");
+    expect(res.birthday).toEqual([["+972504444444", "יולי"]]);
   });
 });

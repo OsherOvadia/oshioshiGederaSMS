@@ -1,4 +1,4 @@
-﻿/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Design tokens â€” "Omakase Noir" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Design tokens â€” "Omakase Noir" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   --bg: #0c0a09;
   --surface: rgba(22, 19, 17, 0.78);
@@ -885,38 +885,67 @@ a:hover {
 }
 
 
-/* ═════════════════════ Waiter screen — "Omakase Noir, service edition" ═════════════════════
-   A staff tool used on a tablet in a dim dining room: dark-native, gold only
-   where an action lives, and never a sideways scroll. */
+/* ═══════════════════ Waiter screen — "Sushi counter" ═══════════════════
+   A staff tool for an iPad or a phone in a dim dining room. Each reward type
+   owns a colour (gold / salmon / plum), so a waiter reads the row by hue
+   before reading a word; matcha green means already redeemed. Surfaces sit
+   lighter than the marketing pages so a data grid stays comfortable.        */
 
 .waiter-container {
-  max-width: 1080px;
+  --wt-joining: #e8b75c;
+  --wt-birthday: #f4836b;
+  --wt-anniversary: #c58ad9;
+  --wt-done: #5fc2a0;
+  --wt-line: rgba(255, 255, 255, 0.12);
+  --wt-panel: rgba(255, 255, 255, 0.055);
+
+  max-width: 1120px;
   text-align: right;
-  padding: 26px 22px 30px;
+  padding: 0 0 8px;
+  overflow: hidden; /* keeps the header strip inside the rounded corners */
+  /* Lighter than the marketing pages: a data grid read at arm's length in a
+     dim room needs more surface luminance than a hero panel does. */
+  background:
+    radial-gradient(120% 80% at 88% -8%, rgba(232, 183, 92, 0.1) 0%, transparent 55%),
+    radial-gradient(90% 70% at 8% 0%, rgba(197, 138, 217, 0.07) 0%, transparent 60%),
+    linear-gradient(168deg, #3a312b 0%, #2b2521 45%, #241f1c 100%);
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+/* Signature detail: the three reward hues as a strip across the top. */
+.waiter-container::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--wt-joining), var(--wt-birthday) 46%, var(--wt-anniversary));
+}
+
+.waiter-inner {
+  padding: 22px 22px 24px;
 }
 
 .waiter-eyebrow {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: var(--accent);
+  color: var(--wt-joining);
   text-transform: uppercase;
-  margin: 0 0 2px;
+  margin: 0 0 3px;
 }
 
 .waiter-container h1 {
   font-family: var(--font-display-stack);
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: clamp(21px, 2.6vw, 29px);
   font-weight: 400;
-  letter-spacing: 0.01em;
+  line-height: 1.15;
   margin: 0;
 }
 
 .waiter-sub {
   color: var(--text-muted);
   font-size: 13.5px;
-  margin: 6px 0 18px;
-  line-height: 1.5;
+  line-height: 1.55;
+  margin: 8px 0 18px;
 }
 
 /* ── Search ─────────────────────────────────────────────────────────── */
@@ -924,41 +953,39 @@ a:hover {
   position: relative;
   display: flex;
   align-items: center;
-  max-width: 460px;
-  margin-bottom: 14px;
+  max-width: 440px;
+  margin-bottom: 12px;
 }
 
 .wt-search-icon {
   position: absolute;
-  inset-inline-start: 16px;
+  inset-inline-start: 15px;
   font-size: 19px;
-  color: var(--accent);
-  opacity: 0.75;
+  color: var(--wt-joining);
   pointer-events: none;
 }
 
 .wt-search input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 1px solid var(--wt-line);
+  border-radius: 14px;
   color: var(--text);
   font-family: inherit;
-  font-size: 16px; /* 16px keeps iOS from zooming on focus */
-  padding: 14px 46px 14px 44px;
+  font-size: 16px; /* 16px stops iOS zooming the field on focus */
+  padding: 13px 44px 13px 42px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .wt-search input::placeholder {
   color: var(--text-muted);
-  opacity: 0.8;
 }
 
 .wt-search input:focus {
   outline: none;
-  background: rgba(0, 0, 0, 0.55);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(212, 168, 83, 0.16);
+  background: rgba(0, 0, 0, 0.45);
+  border-color: var(--wt-joining);
+  box-shadow: 0 0 0 4px rgba(232, 183, 92, 0.15);
 }
 
 .wt-search input::-webkit-search-cancel-button {
@@ -967,22 +994,22 @@ a:hover {
 
 .wt-search-clear {
   position: absolute;
-  inset-inline-end: 8px;
-  width: 34px;
-  height: 34px;
-  min-height: 34px;
+  inset-inline-end: 7px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   margin: 0;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
 }
 
 .wt-search-clear:hover {
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.16);
   color: var(--text);
 }
 
@@ -990,7 +1017,8 @@ a:hover {
 .wt-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   font-size: 13px;
   color: var(--text-muted);
   margin-bottom: 14px;
@@ -1005,11 +1033,11 @@ a:hover {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--glass-border);
+  background: var(--wt-line);
 }
 
 .wt-ready {
-  color: var(--accent);
+  color: var(--wt-joining);
   font-weight: 600;
 }
 
@@ -1021,32 +1049,32 @@ a:hover {
 /* ── Banners ────────────────────────────────────────────────────────── */
 .wt-flash,
 .wt-error {
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   padding: 11px 14px;
-  margin: 0 0 14px;
+  margin: 0 0 13px;
   font-size: 14px;
   border: 1px solid;
   animation: wt-in 0.25s ease both;
 }
 
 .wt-flash {
-  background: rgba(129, 199, 132, 0.12);
-  border-color: rgba(129, 199, 132, 0.4);
-  color: var(--ok);
+  background: rgba(95, 194, 160, 0.13);
+  border-color: rgba(95, 194, 160, 0.42);
+  color: var(--wt-done);
 }
 
 .wt-error {
-  background: rgba(239, 83, 80, 0.12);
-  border-color: rgba(239, 83, 80, 0.42);
-  color: #ffb4b2;
+  background: rgba(239, 83, 80, 0.13);
+  border-color: rgba(239, 83, 80, 0.45);
+  color: #ffb3b0;
 }
 
 /* ── Table (wide screens) ───────────────────────────────────────────── */
 .wt-table-wrap {
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--wt-line);
   border-radius: 14px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--wt-panel);
 }
 
 .wt-table {
@@ -1058,21 +1086,37 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #17130f;
-  color: var(--accent);
+  background: #332b26;
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   text-align: center;
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 10px 11px;
+  border-bottom: 1px solid var(--wt-line);
   white-space: nowrap;
 }
 
+/* Each reward column is headed in its own colour, with a matching underline. */
 .wt-table thead th:first-child {
   text-align: right;
   padding-inline-start: 18px;
+  color: var(--text-muted);
+}
+
+.wt-th-joining {
+  color: var(--wt-joining);
+  box-shadow: inset 0 -2px 0 var(--wt-joining);
+}
+
+.wt-th-birthday {
+  color: var(--wt-birthday);
+  box-shadow: inset 0 -2px 0 var(--wt-birthday);
+}
+
+.wt-th-anniversary {
+  color: var(--wt-anniversary);
+  box-shadow: inset 0 -2px 0 var(--wt-anniversary);
 }
 
 .wt-table tbody tr {
@@ -1080,26 +1124,30 @@ a:hover {
   transition: background 0.15s ease;
 }
 
+.wt-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.035);
+}
+
 .wt-table tbody tr:not(:last-child) th,
 .wt-table tbody tr:not(:last-child) td {
-  border-bottom: 1px solid rgba(212, 168, 83, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
 }
 
 .wt-table tbody tr:hover {
-  background: rgba(212, 168, 83, 0.05);
+  background: rgba(232, 183, 92, 0.07);
 }
 
 .wt-table td {
-  padding: 12px 10px;
+  padding: 11px 10px;
   text-align: center;
   vertical-align: middle;
 }
 
 .wt-who {
   text-align: right;
-  padding: 12px 18px 12px 10px;
+  padding: 11px 18px 11px 10px;
   font-weight: 400;
-  min-width: 11rem;
+  min-width: 10.5rem;
 }
 
 .wt-name {
@@ -1123,7 +1171,7 @@ a:hover {
 }
 
 .wt-phone:hover {
-  color: var(--accent);
+  color: var(--wt-joining);
 }
 
 .wt-empty {
@@ -1133,7 +1181,7 @@ a:hover {
   font-size: 14px;
 }
 
-/* ── Reward cells ───────────────────────────────────────────────────── */
+/* ── Reward controls ────────────────────────────────────────────────── */
 .rw-stack {
   display: flex;
   flex-direction: column;
@@ -1142,12 +1190,12 @@ a:hover {
 }
 
 .rw-empty {
-  color: rgba(168, 162, 158, 0.35);
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.24);
+  font-size: 20px;
   line-height: 1;
 }
 
-/* The only gold in the row: gold means "you can act on this now". */
+/* A filled pill in the reward's own colour = redeemable right now. */
 .rw-btn {
   display: inline-flex;
   flex-direction: column;
@@ -1159,17 +1207,30 @@ a:hover {
   padding: 7px 16px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
-  color: var(--on-accent);
+  color: #24160f;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(212, 168, 83, 0.24);
   transition: transform 0.12s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
+.rw-joining .rw-btn {
+  background: linear-gradient(180deg, #f0c877 0%, var(--wt-joining) 100%);
+  box-shadow: 0 3px 14px rgba(232, 183, 92, 0.3);
+}
+
+.rw-birthday .rw-btn {
+  background: linear-gradient(180deg, #fa9d87 0%, var(--wt-birthday) 100%);
+  box-shadow: 0 3px 14px rgba(244, 131, 107, 0.3);
+}
+
+.rw-anniversary .rw-btn {
+  background: linear-gradient(180deg, #d6a5e6 0%, var(--wt-anniversary) 100%);
+  box-shadow: 0 3px 14px rgba(197, 138, 217, 0.3);
+}
+
 .rw-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 5px 18px rgba(212, 168, 83, 0.34);
+  filter: brightness(1.07);
+  transform: translateY(-1px);
 }
 
 .rw-btn:active:not(:disabled) {
@@ -1191,7 +1252,7 @@ a:hover {
 .rw-btn-sub {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
-  opacity: 0.72;
+  opacity: 0.75;
 }
 
 .rw-chip {
@@ -1203,28 +1264,42 @@ a:hover {
   white-space: nowrap;
 }
 
+/* Waiting: the reward's colour, outlined — visible but not actionable. */
 .rw-chip-wait {
-  border: 1px dashed rgba(212, 168, 83, 0.35);
-  color: var(--text-muted);
+  border: 1px dashed currentColor;
+  opacity: 0.75;
+}
+
+.rw-joining .rw-chip-wait {
+  color: var(--wt-joining);
+}
+
+.rw-birthday .rw-chip-wait {
+  color: var(--wt-birthday);
+}
+
+.rw-anniversary .rw-chip-wait {
+  color: var(--wt-anniversary);
 }
 
 .rw-chip-used {
-  background: rgba(129, 199, 132, 0.12);
-  border: 1px solid rgba(129, 199, 132, 0.3);
-  color: var(--ok);
+  background: rgba(95, 194, 160, 0.14);
+  border: 1px solid rgba(95, 194, 160, 0.34);
+  color: var(--wt-done);
 }
 
-/* ── Cards (narrow screens) ─────────────────────────────────────────── */
+/* ── Cards (tablet portrait + phone) ───────────────────────────────── */
 .wt-cards {
   display: none;
 }
 
 .wt-card {
-  background: rgba(0, 0, 0, 0.26);
-  border: 1px solid var(--glass-border);
+  background: var(--wt-panel);
+  border: 1px solid var(--wt-line);
   border-radius: 14px;
-  padding: 14px 16px;
+  padding: 0 15px 8px;
   animation: wt-row 0.3s ease both;
+  overflow: hidden;
 }
 
 .wt-card-head {
@@ -1232,10 +1307,9 @@ a:hover {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 10px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid rgba(212, 168, 83, 0.12);
+  gap: 6px 10px;
+  padding: 13px 0 11px;
+  border-bottom: 1px solid var(--wt-line);
 }
 
 .wt-card-rewards {
@@ -1247,7 +1321,8 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
+  padding: 9px 0;
+  min-height: 52px;
 }
 
 .wt-card-row + .wt-card-row {
@@ -1255,31 +1330,135 @@ a:hover {
 }
 
 .wt-card-row dt {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
   color: var(--text-muted);
+}
+
+/* The colour cue the table gets from its column headers. */
+.wt-card-row dt::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.wt-card-row.rw-joining dt::before {
+  background: var(--wt-joining);
+}
+
+.wt-card-row.rw-birthday dt::before {
+  background: var(--wt-birthday);
+}
+
+.wt-card-row.rw-anniversary dt::before {
+  background: var(--wt-anniversary);
 }
 
 .wt-card-row dd {
   margin: 0;
 }
 
-@media (max-width: 760px) {
+/* ── Responsive ─────────────────────────────────────────────────────── */
+/* Four data columns stop being comfortable below ~900px (iPad portrait), so
+   the grid becomes cards — two up while there's room, then one. */
+@media (max-width: 900px) {
   .wt-table-wrap {
     display: none;
   }
 
   .wt-cards {
     display: grid;
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 620px) {
+  .wt-cards {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .waiter-container {
-    padding: 20px 16px 24px;
+  .waiter-inner {
+    padding: 18px 15px 20px;
   }
 
   .wt-search {
     max-width: none;
   }
+
+  .waiter-sub {
+    font-size: 13px;
+    margin-bottom: 15px;
+  }
+}
+
+/* Logout must never outrank a redemption button on a small screen. */
+@media (max-width: 519px) {
+  .waiter-container .admin-actions {
+    width: auto;
+  }
+
+  .waiter-container .admin-btn-logout {
+    padding: 8px 15px;
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  .waiter-container .admin-header {
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .waiter-container .admin-title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .wt-card {
+    padding-inline: 12px;
+  }
+
+  .rw-btn {
+    padding-inline: 13px;
+  }
+
+  .wt-card-row dt {
+    font-size: 12.5px;
+  }
+}
+
+/* A tall grid would be clipped by the body's vertical centring. */
+body:has(.waiter-container) {
+  align-items: flex-start;
+}
+
+.waiter-container .admin-header {
+  margin-bottom: 4px;
+}
+
+.waiter-container .admin-title {
+  text-align: right;
+}
+
+/* Logout: quiet glass, so the prominent controls are all redemptions. */
+.waiter-container .admin-btn-logout {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--wt-line);
+  color: var(--text-muted);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.waiter-container .admin-btn-logout:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
 }
 
 /* ── Motion ─────────────────────────────────────────────────────────── */
@@ -1315,49 +1494,5 @@ a:hover {
 
   .rw-btn {
     transition: none;
-  }
-}
-
-/* A tall table would be clipped by the body's vertical centering. */
-body:has(.waiter-container) {
-  align-items: flex-start;
-}
-
-/* Logout: quiet glass, so the only prominent control is a redemption. */
-.waiter-container .admin-btn-logout {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--glass-border);
-  color: var(--text-muted);
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.waiter-container .admin-btn-logout:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text);
-}
-
-.waiter-container .admin-title {
-  text-align: right;
-}
-
-/* Logout must never outrank a redemption button on a narrow screen. */
-@media (max-width: 519px) {
-  .waiter-container .admin-actions {
-    width: auto;
-  }
-
-  .waiter-container .admin-btn-logout {
-    padding: 8px 16px;
-    min-height: 38px;
-    font-size: 13px;
-  }
-
-  .waiter-container .admin-header {
-    align-items: flex-start;
-    justify-content: space-between;
-  }
-
-  .waiter-container .admin-title {
-    flex: 1 1 auto;
   }
 }

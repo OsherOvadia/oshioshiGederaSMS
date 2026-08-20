@@ -1,6 +1,6 @@
 import type { DbConnection } from "./db";
 import { queryCustomers, runDb } from "./db";
-import { getBirthMonth, israelToday } from "./dates";
+import { getBirthMonth, israelToday, toIsraelDateStr } from "./dates";
 
 export type GiftType = "joining" | "birthday" | "anniversary";
 
@@ -96,10 +96,15 @@ export async function issueGift(
 }
 
 /**
- * Gifts granted at signup: the Joining Reward (usable from the NEXT Israel-local
- * day, never expires), plus this month's birthday/anniversary gift when the
- * customer's celebration month is the current month (so mid-month joiners
- * aren't skipped by the cron that already ran on the 1st).
+ * Gifts granted at signup: only the Joining Reward (usable from the NEXT
+ * Israel-local day, never expires).
+ *
+ * Deliberately NOT the birthday/anniversary gift, even when the customer's
+ * declared month is the current one: otherwise someone could join today,
+ * declare this month, and redeem a celebration gift immediately. A celebration
+ * gift for month M only ever comes from the cron on the 1st of M, so a member
+ * who joins during M waits for the next M.
+ *
  * Returns whether the joining gift was actually created — false means a
  * re-subscriber whose joining reward (possibly redeemed) already exists.
  */
@@ -108,17 +113,13 @@ export async function issueSignupGifts(
   customer: { phone: string; dob: string; wedding: string },
   today: string = israelToday()
 ): Promise<{ joiningIssued: boolean }> {
-  const period = monthPeriod(today);
-  const bounds = monthBounds(period);
-  const currentMonth = parseInt(period.slice(5, 7), 10);
-  const joiningIssued = await issueGift(db, { phone: customer.phone, type: "joining", period: "once", validFrom: addDays(today, 1), validUntil: null });
-  // getBirthMonth parses the month out of any stored date string (dob or wedding).
-  if (getBirthMonth(customer.dob) === currentMonth) {
-    await issueGift(db, { phone: customer.phone, type: "birthday", period, validFrom: bounds.from, validUntil: bounds.until });
-  }
-  if (customer.wedding && getBirthMonth(customer.wedding) === currentMonth) {
-    await issueGift(db, { phone: customer.phone, type: "anniversary", period, validFrom: bounds.from, validUntil: bounds.until });
-  }
+  const joiningIssued = await issueGift(db, {
+    phone: customer.phone,
+    type: "joining",
+    period: "once",
+    validFrom: addDays(today, 1),
+    validUntil: null,
+  });
   return { joiningIssued };
 }
 
@@ -126,6 +127,11 @@ export async function issueSignupGifts(
  * Monthly cron: issue this month's birthday + anniversary gifts for all active
  * members and return the celebrant lists (for SMS queuing). Idempotent —
  * re-runs re-return the celebrants but create no duplicate gifts.
+ *
+ * Members who joined during this same month are skipped: their celebration
+ * gift starts from the next matching month, so declaring the current month at
+ * signup buys nothing. (Matters when the cron re-runs later in the month —
+ * on the 1st they usually aren't members yet.)
  */
 export async function issueMonthlyGifts(
   db: DbConnection,
@@ -137,7 +143,7 @@ export async function issueMonthlyGifts(
   const activeCondition = db.type === "postgres" ? "WHERE active = TRUE" : "WHERE active = 1";
   const rows = await queryCustomers(
     db,
-    `SELECT phone, name, date_of_birth, wedding_day FROM customers ${activeCondition}`,
+    `SELECT phone, name, date_of_birth, wedding_day, created_at FROM customers ${activeCondition}`,
     []
   );
   const birthday: [string, string][] = [];
@@ -145,6 +151,9 @@ export async function issueMonthlyGifts(
   for (const row of rows) {
     const phone = String(row.phone);
     const name = String(row.name ?? "");
+    // created_at is a UTC instant; compare its Israel-local month.
+    const joinedDate = toIsraelDateStr(row.created_at as string | null);
+    if (joinedDate && monthPeriod(joinedDate) === period) continue;
     if (getBirthMonth(row.date_of_birth as string) === currentMonth) {
       await issueGift(db, { phone, type: "birthday", period, validFrom: bounds.from, validUntil: bounds.until });
       birthday.push([phone, name]);

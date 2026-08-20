@@ -193,7 +193,7 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
             <tr>
               <th scope="col">לקוח</th>
               {COLUMNS.map((col) => (
-                <th scope="col" key={col.type} title={col.full}>
+                <th scope="col" key={col.type} className={`wt-th-${col.type}`} title={col.full}>
                   {col.label}
                 </th>
               ))}
@@ -216,7 +216,7 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
                   </a>
                 </th>
                 {COLUMNS.map((col) => (
-                  <td key={col.type}>
+                  <td key={col.type} className={`rw-${col.type}`}>
                     <Reward customer={c} type={col.type} />
                   </td>
                 ))}
@@ -241,7 +241,7 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
             </header>
             <dl className="wt-card-rewards">
               {COLUMNS.map((col) => (
-                <div key={col.type} className="wt-card-row">
+                <div key={col.type} className={`wt-card-row rw-${col.type}`}>
                   <dt>{col.full}</dt>
                   <dd>
                     <Reward customer={c} type={col.type} />

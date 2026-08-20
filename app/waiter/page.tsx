@@ -27,6 +27,7 @@ export default async function WaiterPage() {
 
   return (
     <main className="container waiter-container">
+      <div className="waiter-inner">
       <div className="admin-header">
         <div className="admin-title">
           <p className="waiter-eyebrow">Oshi Oshi · גדרה</p>
@@ -39,7 +40,7 @@ export default async function WaiterPage() {
         </div>
       </div>
       <p className="waiter-sub">
-        חיפוש לקוח לפי שם או טלפון. כפתור זהב = מתנה שניתן לממש עכשיו; סימון מימוש הוא סופי.
+        חיפוש לפי שם או טלפון · כפתור צבעוני = ניתן לממש עכשיו · סימון מימוש הוא סופי
       </p>
       {loadError ? (
         <p className="wt-error" role="alert">
@@ -48,6 +49,7 @@ export default async function WaiterPage() {
       ) : (
         <WaiterTable customers={customers} />
       )}
+      </div>
     </main>
   );
 }
