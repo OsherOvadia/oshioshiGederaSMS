@@ -91,3 +91,40 @@ describe("consent", () => {
     expect(parseSubmitFields({ ...valid, consent: "off" }).ok).toBe(false);
   });
 });
+
+describe("minimum signup age", () => {
+  const base = {
+    name: "דנה",
+    phone: "0501234567",
+    email: "a@b.co",
+    wedding_day: "",
+    city: "גדרה",
+    consent: "on",
+  };
+  const TODAY = "2026-08-20";
+
+  it("rejects a signup from someone under 18", () => {
+    const res = parseSubmitFields({ ...base, date_of_birth: "2010-05-05" }, TODAY);
+    expect(res).toEqual({ ok: false, error: "underage" });
+  });
+
+  it("accepts someone exactly 18 today", () => {
+    const res = parseSubmitFields({ ...base, date_of_birth: "2008-08-20" }, TODAY);
+    expect(res.ok).toBe(true);
+  });
+
+  it("rejects someone one day short of 18", () => {
+    const res = parseSubmitFields({ ...base, date_of_birth: "2008-08-21" }, TODAY);
+    expect(res).toEqual({ ok: false, error: "underage" });
+  });
+
+  it("rejects an unparseable date of birth rather than letting it through", () => {
+    const res = parseSubmitFields({ ...base, date_of_birth: "לא תאריך" }, TODAY);
+    expect(res).toEqual({ ok: false, error: "underage" });
+  });
+
+  it("checks age before consent, so a minor is told the real reason", () => {
+    const res = parseSubmitFields({ ...base, date_of_birth: "2012-01-01", consent: undefined }, TODAY);
+    expect(res).toEqual({ ok: false, error: "underage" });
+  });
+});

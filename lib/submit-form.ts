@@ -1,6 +1,12 @@
 import { formatPhone, isValidEmail, isValidPhone } from "./validation";
+import { isAtLeastAge, israelToday } from "./dates";
 
-export type SubmitError = "missing" | "invalid_phone" | "invalid_email" | "consent";
+/** Club membership is adults-only: the club advertises a bar, and Israeli
+ *  consumer-protection regulations require guardian consent to market to a
+ *  minor's phone number at any age under 18. See app/terms. */
+export const MIN_SIGNUP_AGE = 18;
+
+export type SubmitError = "missing" | "invalid_phone" | "invalid_email" | "underage" | "consent";
 
 export type ParsedSubmit =
   | {
@@ -25,7 +31,7 @@ export function parseSubmitFields(raw: {
   wedding_day?: unknown;
   city?: unknown;
   consent?: unknown;
-}): ParsedSubmit {
+}, today: string = israelToday()): ParsedSubmit {
   const name = str(raw.name, 100);
   const rawPhone = str(raw.phone, 20);
   const email = str(raw.email, 255);
@@ -38,6 +44,8 @@ export function parseSubmitFields(raw: {
   const phone = formatPhone(rawPhone);
   if (!isValidPhone(phone)) return { ok: false, error: "invalid_phone" };
   if (!isValidEmail(email)) return { ok: false, error: "invalid_email" };
+  // Fails closed: an unparseable date of birth cannot prove adulthood.
+  if (!isAtLeastAge(dob, MIN_SIGNUP_AGE, today)) return { ok: false, error: "underage" };
 
   // HTML checkboxes submit "on" when checked and are absent when not.
   const consentGiven = raw.consent === "on" || raw.consent === "1" || raw.consent === "true" || raw.consent === true;

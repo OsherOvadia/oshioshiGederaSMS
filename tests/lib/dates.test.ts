@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getBirthMonth, toIsraelDateStr, israelToday } from "@/lib/dates";
+import { getBirthMonth, toIsraelDateStr, israelToday, isAtLeastAge } from "@/lib/dates";
 
 describe("getBirthMonth", () => {
   it("parses ISO YYYY-MM-DD", () => {
@@ -55,5 +55,33 @@ describe("toIsraelDateStr", () => {
 describe("israelToday", () => {
   it("returns a YYYY-MM-DD string", () => {
     expect(israelToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("isAtLeastAge", () => {
+  it("counts the birthday itself as reaching the age", () => {
+    expect(isAtLeastAge("2008-08-20", 18, "2026-08-20")).toBe(true);
+  });
+  it("rejects the day before the 18th birthday", () => {
+    expect(isAtLeastAge("2008-08-21", 18, "2026-08-20")).toBe(false);
+  });
+  it("handles month and day boundaries", () => {
+    expect(isAtLeastAge("2008-12-31", 18, "2026-08-20")).toBe(false);
+    expect(isAtLeastAge("2008-01-01", 18, "2026-08-20")).toBe(true);
+    expect(isAtLeastAge("2008-08-19", 18, "2026-08-20")).toBe(true);
+  });
+  it("accepts clearly adult and rejects clearly minor dates", () => {
+    expect(isAtLeastAge("1970-05-05", 18, "2026-08-20")).toBe(true);
+    expect(isAtLeastAge("2015-05-05", 18, "2026-08-20")).toBe(false);
+  });
+  it("supports Israeli day-first formats", () => {
+    expect(isAtLeastAge("20/08/2008", 18, "2026-08-20")).toBe(true);
+    expect(isAtLeastAge("21.08.2008", 18, "2026-08-20")).toBe(false);
+  });
+  it("fails closed on missing or unparseable dates", () => {
+    expect(isAtLeastAge("", 18, "2026-08-20")).toBe(false);
+    expect(isAtLeastAge(null, 18, "2026-08-20")).toBe(false);
+    expect(isAtLeastAge("not-a-date", 18, "2026-08-20")).toBe(false);
+    expect(isAtLeastAge("2008-02-31", 18, "2026-08-20")).toBe(false); // impossible day
   });
 });

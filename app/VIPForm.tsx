@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const ERROR_MESSAGES: Record<string, string> = {
   missing: "אנא מלאו את כל שדות החובה",
@@ -10,6 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   system: "תקלה במערכת",
   rate: "יותר מדי בקשות. נסו שוב מאוחר יותר.",
   consent: "כדי להצטרף למועדון יש לאשר קבלת הודעות SMS",
+  underage: "ההצטרפות למועדון מותרת מגיל 18 ומעלה",
 };
 
 // Optional business contact for the success screen; buttons hide when unset.
@@ -21,6 +22,21 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const dobRef = useRef<HTMLInputElement>(null);
+
+  // Cap the date picker at the latest 18th-birthday date. Applied after mount
+  // rather than rendered, so a statically-cached page can't ship a stale
+  // boundary and SSR/client markup stays identical. The server re-checks age
+  // regardless — this only saves the customer a pointless round-trip.
+  useEffect(() => {
+    const el = dobRef.current;
+    if (!el) return;
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear() - 18, now.getMonth(), now.getDate());
+    el.max = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(
+      cutoff.getDate()
+    ).padStart(2, "0")}`;
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -120,9 +136,9 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         </div>
         <div className="form-group">
           <label htmlFor="dob">
-            תאריך לידה * <span className="label-hint">— כדי שנדע מתי לפנק 🎂</span>
+            תאריך לידה * <span className="label-hint">— כדי שנדע מתי לפנק 🎂 (מגיל 18)</span>
           </label>
-          <input type="date" id="dob" name="date_of_birth" required autoComplete="bday" />
+          <input type="date" id="dob" name="date_of_birth" required autoComplete="bday" ref={dobRef} />
         </div>
         <div className="form-group">
           <label htmlFor="wedding">
