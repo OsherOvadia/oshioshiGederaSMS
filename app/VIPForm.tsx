@@ -308,8 +308,11 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
             aria-describedby={`${ids}-phone-hint`}
             disabled={loading}
           />
+          {/* True whether or not REQUIRE_PHONE_VERIFICATION is on. This step is
+              statically rendered and cannot know the mode, so it must not
+              promise a code — the next screen says so once the server has. */}
           <p id={`${ids}-phone-hint`} className="field-hint">
-            נשלח לכם קוד אימות חד-פעמי ב-SMS למספר הזה.
+            לכאן יגיעו ההטבות, המבצעים והפינוקים.
           </p>
         </div>
         <div className="form-group">
@@ -376,7 +379,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
           </label>
         </div>
         <button type="submit" disabled={loading}>
-        {loading ? "שולח קוד..." : "אני בפנים 🍣"}
+        {loading ? "רגע..." : "אני בפנים 🍣"}
         </button>
       </form>
 
