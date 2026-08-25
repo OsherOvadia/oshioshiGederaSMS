@@ -15,6 +15,14 @@
   /* Focus ring: brighter than --accent so it clears 3:1 against both the dark
      glass surfaces and the light admin cards (WCAG 1.4.11). */
   --focus-ring: #ffd97d;
+  /* Club hues — one per reward type. These were local to the waiter screen;
+     they are brand-level now so a colour means the same thing on the customer
+     page as it does on the tablet behind the counter. All four measure 8:1 or
+     better on black. */
+  --club-joining: #e8b75c;
+  --club-birthday: #f4836b;
+  --club-anniversary: #c58ad9;
+  --club-done: #5fc2a0;
   --radius: 20px;
   --radius-sm: 10px;
   /* Notch/home-indicator insets. They resolve to 0 unless the viewport is
@@ -61,66 +69,6 @@ body {
   padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right))
     calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
   overflow-wrap: break-word;
-}
-
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Hero slideshow (rendered by HeroSlideshow.tsx) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.hero-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: var(--bg); /* solid fallback: no white flash while images decode */
-}
-
-.hero-slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 1.5s ease-in-out;
-  will-change: opacity;
-}
-
-.hero-slide[data-active="true"] {
-  opacity: 1;
-}
-
-/* Ken Burns: transform-only (GPU-composited, zero CLS) */
-.hero-slide[data-active="true"] img {
-  animation: kenburns 9s ease-out forwards;
-}
-
-@keyframes kenburns {
-  from { transform: scale(1); }
-  to { transform: scale(1.06); }
-}
-
-.hero-scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(12, 10, 9, 0.92) 0%,
-    rgba(12, 10, 9, 0.45) 45%,
-    rgba(12, 10, 9, 0.6) 100%
-  );
-}
-
-.hero-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.07;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-slide {
-    transition: none;
-  }
-  .hero-slide img {
-    animation: none !important;
-  }
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Card / container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -1213,10 +1161,10 @@ a {
    lighter than the marketing pages so a data grid stays comfortable.        */
 
 .waiter-container {
-  --wt-joining: #e8b75c;
-  --wt-birthday: #f4836b;
-  --wt-anniversary: #c58ad9;
-  --wt-done: #5fc2a0;
+  --wt-joining: var(--club-joining);
+  --wt-birthday: var(--club-birthday);
+  --wt-anniversary: var(--club-anniversary);
+  --wt-done: var(--club-done);
   --wt-line: rgba(255, 255, 255, 0.12);
   --wt-panel: rgba(255, 255, 255, 0.055);
 
@@ -1993,10 +1941,6 @@ a {
    meaning carried purely by a background - a reward's hue, a status badge, the
    selected filter chip - would vanish. Give each one a border and a glyph. */
 @media (forced-colors: active) {
-  .hero-bg {
-    display: none;
-  }
-
   .badge,
   .rw-chip,
   .rw-btn,
@@ -2023,7 +1967,6 @@ a {
 
 /* The club terms are the one page people actually print or save as PDF. */
 @media print {
-  .hero-bg,
   .skip-link,
   .success-actions,
   form {
@@ -2056,5 +1999,709 @@ a {
 
   a {
     color: #000;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PUBLIC PAGES — "Counter"
+
+   Black and vermilion, both taken from the logo file itself: #000 is 83% of
+   the mark and #d4232b is the ensō brush circle. The gold this replaced was
+   invented — it appears nowhere in the brand.
+
+   Dark, but nothing here is the dark that reads as machine-made: no frosted
+   glass, no gradient, no blur, no photograph behind the words. The page is a
+   flat black ground with type on it and one rule of colour. What makes it feel
+   designed is spacing and typography, not effects.
+
+   Two accommodations for reading it at fifty-plus, in a dim room:
+     · The type is #f4f2ee rather than #fff and the ground is #080807 rather
+       than #000 — a hair off the extremes, because maximum contrast on an
+       emissive screen makes light type bloom into the dark.
+     · #d4232b on black measures 3.8:1, under the floor, so red *type* uses a
+       lifted tint and only red *fills* carry the exact brand value (white on
+       it measures 5.2:1).
+
+   Scoped to .sheet so /admin and /waiter keep their own designs untouched.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.sheet {
+  --pad-x: clamp(1.25rem, 5vw, 3rem);
+  --pad-top: clamp(0rem, 2vw, 1rem);
+  --pad-bottom: clamp(2.5rem, 6vw, 4rem);
+
+  /* True #000, matching the logo's own ground exactly. The mark is a solid
+     black block, so on any near-black the block's edges show as a faint
+     rectangle around the wordmark; at #000 the block disappears and only the
+     white lettering and the red ensō are left sitting on the page. */
+  --bg: #000000;
+  --panel: #141312;
+  --panel-line: rgba(255, 255, 255, 0.14);
+  --text: #f4f2ee;
+  /* A touch warm rather than neutral grey, so the page reads as lit rather
+     than switched off. 8.4:1 on black. */
+  --text-muted: #ada79c;
+  --rule: rgba(255, 255, 255, 0.1);
+  /* Fills only. */
+  --vermilion: #d4232b;
+  /* Type and hairlines, lifted to clear 4.5:1 on the ground. */
+  --vermilion-lift: #e8484f;
+
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+  margin-block: 0 auto;
+  padding-block: calc(var(--pad-top) + var(--safe-top))
+    calc(var(--pad-bottom) + var(--safe-bottom));
+  padding-inline: calc(var(--pad-x) + max(var(--safe-left), var(--safe-right)));
+  background: var(--bg);
+  color: var(--text);
+  text-align: start;
+  font-size: 1.125rem; /* 18px floor: this is read by people over 60 */
+  line-height: 1.75;
+}
+
+body:has(.sheet) {
+  background: #000;
+  align-items: stretch;
+  padding: 0;
+  /* `clip`, not `hidden`: it contains the masthead's full-bleed negative
+     margins without turning <body> into a scroll container. */
+  overflow-x: clip;
+}
+
+/* The three reward hues as a rule across the very top of every public page —
+   the same strip the waiter screen wears. It is the one place the club shows
+   its full palette, it costs no markup, and it stays put while the page
+   scrolls, so the brand holds the top edge the whole way down. */
+body:has(.sheet)::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: 4px;
+  z-index: 5;
+  background: linear-gradient(
+    90deg,
+    var(--club-joining) 0%,
+    var(--club-birthday) 46%,
+    var(--club-anniversary) 100%
+  );
+}
+
+/* ── Masthead band ──────────────────────────────────────────────────────── */
+/* The photograph belongs at the top edge or nowhere. Sitting in the middle of
+   the page it interrupted the one thing the page is for — reading down to the
+   form — and a picture that stops you halfway is worse than no picture. As a
+   full-bleed band it is letterhead: seen, then done with. */
+
+.sheet-plate {
+  position: relative;
+  /* Out to the window edges, not just the column's. A masthead that stops at
+     the text measure reads as a picture someone placed there; one that runs
+     the full width reads as the top of the page. */
+  margin-block: calc(-1 * (var(--pad-top) + var(--safe-top)))
+    clamp(1.75rem, 5vw, 2.5rem);
+  margin-inline: calc(50% - 50vw);
+  height: clamp(7.5rem, 24vw, 11rem);
+  background: #000;
+  overflow: hidden;
+}
+
+.sheet-plate img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Pulled down so it sits behind the page rather than in front of it. */
+  filter: saturate(0.8) brightness(0.72);
+}
+
+/* Fades the photograph into the ground instead of ending it on a hard line. */
+.sheet-plate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.08) 45%,
+    var(--bg) 100%
+  );
+}
+
+/* ── Masthead ───────────────────────────────────────────────────────────── */
+
+.sheet-mark {
+  display: block;
+  width: 10.5rem;
+  max-width: 55%;
+  height: auto;
+  margin-bottom: clamp(1.75rem, 5vw, 2.5rem);
+}
+
+.sheet-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--vermilion-lift);
+}
+
+.sheet-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.sheet h1 {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  font-size: clamp(2rem, 7.5vw, 3.25rem);
+  line-height: 1.16;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0 0 1rem;
+  text-wrap: balance;
+}
+
+.sheet-lede {
+  font-size: clamp(1.0625rem, 3.4vw, 1.1875rem);
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 36ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* ── Numbered list ──────────────────────────────────────────────────────── */
+/* Numerals, not icons. A chopsticks emoji beside "members-only deals" adds
+   nothing the words did not already carry; a numeral says how many there are. */
+
+.sheet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sheet-list li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0 1rem;
+  padding: 1.4rem 0;
+}
+
+.sheet-list li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.sheet-num {
+  font-family: var(--font-display-stack);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--vermilion-lift);
+  line-height: 1.5;
+  padding-top: 0.15rem;
+}
+
+/* Not decoration: item 02 is the birthday gift, and salmon is what a birthday
+   gift looks like on the waiter's screen when the customer redeems it. The
+   colour is the same fact in two places. */
+.sheet-list li:nth-child(2) .sheet-num {
+  color: var(--club-birthday);
+}
+
+.sheet-list li:nth-child(3) .sheet-num {
+  color: var(--club-done);
+}
+
+.sheet-list h2 {
+  font-family: var(--font-body-stack);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0 0 0.15rem;
+}
+
+.sheet-list p {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+
+.sheet-section {
+  margin-top: clamp(2.5rem, 7vw, 3.5rem);
+}
+
+.sheet-section > h2 {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  font-size: clamp(1.4rem, 4.5vw, 1.8rem);
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 1.5rem;
+}
+
+.sheet-section-note {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0 0 1.75rem;
+}
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+/* Bordered boxes, label above and outside. Underlined "minimal" fields
+   photograph well and confuse people; a box is unambiguous about where to
+   write. Sized up throughout: 18px values, 17px labels, 56px tall. */
+
+.sheet .form-group {
+  margin-bottom: 1.35rem;
+  text-align: start;
+}
+
+.sheet label {
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+  text-align: start;
+}
+
+.sheet .label-hint {
+  display: block;
+  font-weight: 400;
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.sheet .req {
+  color: var(--vermilion-lift);
+  font-weight: 700;
+}
+
+.sheet input,
+.sheet textarea,
+.sheet select {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.85rem 1rem;
+  background: var(--panel);
+  border: 1.5px solid var(--panel-line);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-body-stack);
+  font-size: max(1.125rem, 16px);
+  line-height: 1.5;
+  direction: rtl;
+  text-align: start;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sheet input::placeholder {
+  color: #8b857b;
+  opacity: 1;
+}
+
+.sheet input:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.sheet input:focus {
+  outline: none;
+  border-color: var(--vermilion);
+  box-shadow: 0 0 0 3px rgba(212, 35, 43, 0.3);
+}
+
+.sheet input[type="date"] {
+  color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+}
+
+.sheet .input-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.sheet .field-hint {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 0.4rem 0 0;
+}
+
+.sheet .consent-group {
+  margin: 1.75rem 0 0;
+  padding: 1.15rem 1.15rem 1.25rem;
+  background: var(--panel);
+  border-inline-start: 3px solid var(--vermilion);
+}
+
+.sheet .consent-label {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  gap: 0 0.85rem;
+  align-items: start;
+  /* It is a <label>, so it was picking up the 700 weight meant for field
+     names. This is a paragraph of consent text — at bold it shouted. */
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sheet .consent-label input[type="checkbox"] {
+  width: 1.75rem;
+  height: 1.75rem;
+  min-height: 0;
+  margin-top: 0.15rem;
+  accent-color: var(--vermilion);
+  cursor: pointer;
+}
+
+.sheet .consent-label a {
+  font-size: inherit;
+  color: var(--vermilion-lift);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.sheet button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.75rem;
+  margin-top: 1.75rem;
+  padding: 1rem 1.5rem;
+  background: var(--vermilion);
+  color: #fff;
+  border: none;
+  border-radius: 2px;
+  font-family: var(--font-body-stack);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sheet button:hover {
+    background: #e62a33;
+  }
+}
+
+.sheet button:active {
+  background: #b81d25;
+}
+
+.sheet button:disabled {
+  background: #2a2724;
+  color: #7d776d;
+  cursor: default;
+}
+
+.sheet .btn-link {
+  width: auto;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.5rem 0;
+  background: none;
+  color: var(--vermilion-lift);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sheet .btn-link:hover {
+    background: none;
+    color: var(--text);
+  }
+}
+
+.sheet .btn-link:disabled {
+  background: none;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.sheet .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  border: 1.5px solid var(--panel-line);
+  border-radius: 2px;
+  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sheet .btn-ghost:hover {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+}
+
+/* ── Feedback ───────────────────────────────────────────────────────────── */
+
+.sheet .form-feedback {
+  margin: 1.25rem 0 0;
+  padding: 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.sheet .form-feedback:empty {
+  margin: 0;
+}
+
+.sheet .error {
+  color: var(--vermilion-lift);
+}
+
+.sheet .notice {
+  color: var(--text);
+}
+
+/* ── SMS code step ──────────────────────────────────────────────────────── */
+
+.sheet .otp-form {
+  text-align: start;
+}
+
+.sheet .otp-title {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  font-size: clamp(1.4rem, 4.5vw, 1.75rem);
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.sheet .otp-hint {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0 0 1.75rem;
+  max-width: 34ch;
+}
+
+.sheet .otp-phone {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet .otp-input {
+  text-align: center;
+  font-family: var(--font-display-stack);
+  font-size: clamp(1.75rem, 9vw, 2.25rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  min-height: 4.5rem;
+  padding: 0.5rem;
+}
+
+.sheet .otp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 1.25rem;
+  margin-top: 0.75rem;
+}
+
+/* ── Success ────────────────────────────────────────────────────────────── */
+
+.sheet .success-view {
+  padding: 0;
+}
+
+/* Green, not red. Red is the colour this page uses for "something is wrong",
+   and it was stamping the one screen that means the opposite. It is also the
+   colour a redeemed gift already wears on the waiter's screen. */
+.sheet .success-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 0 1.5rem;
+  border: 2.5px solid var(--club-done);
+  border-radius: 50%;
+  background: none;
+  color: var(--club-done);
+  font-size: 2.25rem;
+  line-height: 1;
+  transform: rotate(-8deg);
+}
+
+.sheet .success-title {
+  font-family: var(--font-display-stack);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 5.5vw, 2.1rem);
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0 0 0.75rem;
+}
+
+.sheet .success-view p {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+  max-width: 36ch;
+}
+
+.sheet .success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.sheet-foot {
+  margin-top: clamp(2.5rem, 7vw, 3.5rem);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+/* The bare `p {}` and `a {}` element rules are the staff-screen defaults. An
+   inherited font-size always loses to a rule matching the element itself, so
+   anywhere these pages rely on inheritance has to say so out loud. */
+.sheet-foot p {
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0 0 0.35rem;
+}
+
+.sheet-foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--vermilion-lift);
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* ── Page widths ────────────────────────────────────────────────────────── */
+
+.sheet-narrow {
+  max-width: 28rem;
+}
+
+.sheet-prose {
+  max-width: 44rem;
+}
+
+.sheet-narrow,
+.sheet-prose {
+  padding-top: calc(clamp(2rem, 6vw, 3.5rem) + var(--safe-top));
+}
+
+/* ── Long-form (terms) ──────────────────────────────────────────────────── */
+
+.sheet-prose h2 {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  font-size: 1.1875rem;
+  line-height: 1.35;
+  color: var(--text);
+  margin: 2.25rem 0 0.5rem;
+}
+
+.sheet-prose p {
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  color: var(--text-muted);
+  margin: 0 0 0.9rem;
+  max-width: 64ch;
+}
+
+.sheet-updated {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Focus ──────────────────────────────────────────────────────────────── */
+
+.sheet :focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.sheet input:focus-visible {
+  outline-offset: 1px;
+}
+
+/* ── Preferences ────────────────────────────────────────────────────────── */
+
+@media (prefers-contrast: more) {
+  .sheet {
+    --bg: #000;
+    --panel: #000;
+    --panel-line: rgba(255, 255, 255, 0.6);
+    --text: #fff;
+    --text-muted: #e2ded7;
+    --rule: rgba(255, 255, 255, 0.4);
+    --vermilion-lift: #ff7b80;
+  }
+
+  .sheet-plate {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .sheet-plate {
+    display: none;
+  }
+
+  .sheet button,
+  .sheet .consent-group {
+    border: 1px solid currentColor;
   }
 }

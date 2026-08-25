@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { heebo, secularOne } from "./fonts";
+import { assistant, frankRuhl } from "./fonts";
 import "./globals.css";
 
 const appUrl = process.env.APP_URL || "http://localhost:3000";
@@ -29,7 +29,7 @@ export const viewport: Viewport = {
   // safe-area padding in globals.css silently does nothing — which is why the
   // layout ran under the notch and the home indicator.
   viewportFit: "cover",
-  themeColor: "#0c0a09",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="he" dir="rtl" className={`${heebo.variable} ${secularOne.variable}`}>
+    <html lang="he" dir="rtl" className={`${assistant.variable} ${frankRuhl.variable}`}>
       <body>
         <a className="skip-link" href="#main-content">
           דילוג לתוכן הראשי

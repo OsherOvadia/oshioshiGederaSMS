@@ -32,16 +32,18 @@ export default async function UnsubscribePage({
   }
 
   return (
-    <main className="container" id="main-content">
-      <div className="logo-area">
-        <Logo />
+    <main className="sheet sheet-narrow" id="main-content">
+      <Logo />
+      <p className="sheet-label">הסרה מהדיוור</p>
+      <h1>הוסרתם מרשימת התפוצה</h1>
+      <p className="sheet-lede">
+        לא נשלח לכם עוד הודעות. אם זו הייתה טעות, אפשר להצטרף שוב בכל רגע.
+      </p>
+      <div className="success-actions">
+        <a className="btn-ghost" href="/">
+          הצטרפות מחדש למועדון
+        </a>
       </div>
-      <h1 className="success">הוסרת בהצלחה</h1>
-      <p>לא תקבלו מאיתנו יותר הודעות.</p>
-      <p>התחרטתם? תמיד אפשר לחזור — ניתן להירשם מחדש בכל רגע.</p>
-      <a className="btn-ghost" href="/">
-        הצטרפות מחדש למועדון
-      </a>
     </main>
   );
 }

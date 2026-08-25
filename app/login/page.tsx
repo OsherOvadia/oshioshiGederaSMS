@@ -17,11 +17,10 @@ export default async function LoginPage({
   const isSystem = error === "system";
 
   return (
-    <main className="container" id="main-content">
-      <div className="logo-area">
-        <Logo />
-      </div>
-      <h1>כניסה לצוות</h1>
+    <main className="sheet sheet-narrow" id="main-content">
+      <Logo />
+      <p className="sheet-label">כניסת צוות</p>
+      <h1>כניסה למערכת</h1>
       {/* Server-rendered errors (the no-JS POST path). role="alert" so they are
           announced when the page loads with ?error= in the URL. */}
       {isWrong && (
@@ -40,9 +39,9 @@ export default async function LoginPage({
         </p>
       )}
       <LoginForm />
-      <Link href="/" className="small-text">
-        חזרה לדף הבית
-      </Link>
+      <footer className="sheet-foot">
+        <Link href="/">חזרה לדף הבית</Link>
+      </footer>
     </main>
   );
 }

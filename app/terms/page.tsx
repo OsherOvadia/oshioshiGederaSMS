@@ -30,9 +30,10 @@ export default function TermsPage() {
   const contactLine = channels.length > 0 ? `, ${channels.join(", ")}` : "";
 
   return (
-    <main className="container terms-page" id="main-content" dir="rtl">
+    <main className="sheet sheet-prose" id="main-content" dir="rtl">
+      <p className="sheet-label">תקנון</p>
       <h1>תקנון מועדון הלקוחות ומדיניות פרטיות</h1>
-      <p className="terms-updated">עדכון אחרון: {UPDATED}</p>
+      <p className="sheet-updated">עדכון אחרון: {UPDATED}</p>
 
       <section>
         <h2>1. כללי</h2>
@@ -200,6 +201,10 @@ export default function TermsPage() {
         <p>על תקנון זה יחול הדין הישראלי, וסמכות השיפוט נתונה לבתי המשפט המוסמכים במחוז המרכז.</p>
       </section>
 
+
+      <footer className="sheet-foot">
+        <a href="/">חזרה לדף ההצטרפות</a>
+      </footer>
     </main>
   );
 }

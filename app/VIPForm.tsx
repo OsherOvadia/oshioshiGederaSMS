@@ -150,7 +150,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         setResendIn(typeof json.resendInSec === "number" ? json.resendInSec : 60);
         setCode("");
         setStep("code");
-        if (isResend) setNotice("שלחנו קוד חדש 📲");
+        if (isResend) setNotice("שלחנו קוד חדש");
         if (typeof json.devCode === "string") {
           // Only ever present when no SMS gateway is configured (local dev).
           setNotice(`קוד לפיתוח בלבד: ${json.devCode}`);
@@ -239,13 +239,16 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         <div className="success-check" aria-hidden="true">
           ✓
         </div>
-        <h2 className="success-title">איזה כיף שהצטרפת! 🎉</h2>
-        <p>מעכשיו ההטבות, מבצעי ה-1+1 והפינוקים מגיעים ישירות אליך ב-SMS.</p>
+        <h2 className="success-title">נרשמתם למועדון</h2>
+        <p>
+          מעכשיו המבצעים, ההטבות ומתנת יום ההולדת יגיעו אליכם ב-SMS.
+          אין צורך לעשות דבר נוסף.
+        </p>
         {(BUSINESS_PHONE || WHATSAPP_PHONE) && (
           <div className="success-actions">
             {BUSINESS_PHONE && (
               <a className="btn-ghost" href={`tel:${BUSINESS_PHONE}`}>
-                <span aria-hidden="true">📞 </span>חיוג למסעדה
+                חיוג למסעדה
               </a>
             )}
             {WHATSAPP_PHONE && (
@@ -255,7 +258,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span aria-hidden="true">💬 </span>וואטסאפ
+                וואטסאפ
                 <span className="sr-only"> (נפתח בחלון חדש)</span>
               </a>
             )}
@@ -279,8 +282,11 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         aria-describedby={feedbackId}
         hidden={step !== "details"}
       >
+        <p className="sheet-section-note">שדות המסומנים בכוכבית אדומה הם שדות חובה.</p>
         <div className="form-group">
-          <label htmlFor="name">שם מלא *</label>
+          <label htmlFor="name">
+            שם מלא <span className="req" aria-hidden="true">*</span>
+          </label>
           <input
             type="text"
             id="name"
@@ -293,7 +299,9 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="phone">טלפון נייד *</label>
+          <label htmlFor="phone">
+            טלפון נייד <span className="req" aria-hidden="true">*</span>
+          </label>
           <input
             type="tel"
             id="phone"
@@ -316,7 +324,9 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
           </p>
         </div>
         <div className="form-group">
-          <label htmlFor="email">דוא&quot;ל *</label>
+          <label htmlFor="email">
+            דוא&quot;ל <span className="req" aria-hidden="true">*</span>
+          </label>
           <input
             type="email"
             id="email"
@@ -332,7 +342,10 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         </div>
         <div className="form-group">
           <label htmlFor="dob">
-            תאריך לידה * <span className="label-hint">— כדי שנדע מתי לפנק 🎂 (מגיל 18)</span>
+            תאריך לידה <span className="req" aria-hidden="true">*</span>
+            <span className="label-hint">
+              כדי שנדע מתי לשלוח לכם את מתנת יום ההולדת. ההצטרפות מגיל 18.
+            </span>
           </label>
           <input
             type="date"
@@ -346,12 +359,17 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
         </div>
         <div className="form-group">
           <label htmlFor="wedding">
-            יום נישואין <span className="label-hint">— לא חובה, כדי שנוכל לפנק גם ביום הנישואין 💍</span>
+            יום נישואין
+            <span className="label-hint">
+              לא חובה. אם תמלאו, תחכה לכם מתנה גם בחודש יום הנישואין.
+            </span>
           </label>
           <input type="date" id="wedding" name="wedding_day" disabled={loading} />
         </div>
         <div className="form-group">
-          <label htmlFor="city">עיר *</label>
+          <label htmlFor="city">
+            עיר <span className="req" aria-hidden="true">*</span>
+          </label>
           <input
             type="text"
             id="city"
@@ -379,7 +397,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
           </label>
         </div>
         <button type="submit" disabled={loading}>
-        {loading ? "רגע..." : "אני בפנים 🍣"}
+        {loading ? "רגע..." : "הצטרפות למועדון"}
         </button>
       </form>
 
@@ -389,12 +407,14 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
             אימות מספר הטלפון
           </h2>
           <p id={codeHintId} className="otp-hint">
-            שלחנו קוד בן {CODE_LENGTH} ספרות ב-SMS למספר{" "}
-            <bdi className="otp-phone">{displayPhone(verifiedPhone)}</bdi>. הזינו אותו כאן כדי להשלים
-            את ההצטרפות.
+            שלחנו לכם הודעת SMS עם קוד בן {CODE_LENGTH} ספרות, למספר{" "}
+            <bdi className="otp-phone">{displayPhone(verifiedPhone)}</bdi>. הקלידו את הקוד
+            כאן ונסיים.
           </p>
           <div className="form-group">
-            <label htmlFor={`${ids}-code`}>קוד אימות *</label>
+            <label htmlFor={`${ids}-code`}>
+              הקוד שקיבלתם ב-SMS <span className="req" aria-hidden="true">*</span>
+            </label>
             <input
               id={`${ids}-code`}
               ref={codeRef}
@@ -426,7 +446,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
               onClick={handleResend}
               disabled={loading || resendIn > 0}
             >
-              {resendIn > 0 ? `שליחת קוד חדש בעוד ${resendIn} שניות` : "לא קיבלתי קוד — שלחו שוב"}
+              {resendIn > 0 ? `אפשר לבקש קוד חדש בעוד ${resendIn} שניות` : "לא קיבלתי קוד, שלחו שוב"}
             </button>
             <button
               type="button"
@@ -439,7 +459,7 @@ export default function VIPForm({ unsubKeyword }: { unsubKeyword: string }) {
               }}
               disabled={loading}
             >
-              שינוי מספר הטלפון
+              תיקון מספר הטלפון
             </button>
           </div>
         </form>
