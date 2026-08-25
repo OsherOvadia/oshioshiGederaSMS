@@ -152,6 +152,28 @@ export async function applySchema(db: DbConnection): Promise<void> {
       UNIQUE(phone, type, period)
     )
   `;
+  // One row per phone number, holding the in-flight SMS verification for that
+  // number: the HMAC of the current code, its expiry, the guess counter, the
+  // send-throttle counters, and (after a correct code) the hash of the
+  // single-use token that authorises exactly one club signup.
+  //
+  // Every value is TEXT or INTEGER and every timestamp is a UTC ISO instant, so
+  // one DDL string is valid on both engines and the string comparisons in
+  // lib/phone-verification.ts order correctly on both.
+  const phoneVerificationsSchema = `
+    CREATE TABLE IF NOT EXISTS phone_verifications (
+      phone TEXT PRIMARY KEY,
+      code_hash TEXT,
+      code_expires_at TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      send_count INTEGER NOT NULL DEFAULT 0,
+      send_window_start TEXT,
+      last_sent_at TEXT,
+      token_hash TEXT,
+      token_expires_at TEXT,
+      updated_at TEXT
+    )
+  `;
   if (db.type === "postgres") {
     const pgSchema = customersSchema
       .replace("INTEGER DEFAULT 1", "BOOLEAN DEFAULT TRUE")
@@ -167,6 +189,7 @@ export async function applySchema(db: DbConnection): Promise<void> {
     ];
     for (const sql of alters) await db.conn.query(sql).catch(() => {});
     await db.conn.query(giftsSchemaPg);
+    await db.conn.query(phoneVerificationsSchema);
   } else {
     db.conn.exec(customersSchema);
     const alters = [
@@ -183,6 +206,7 @@ export async function applySchema(db: DbConnection): Promise<void> {
       } catch {}
     }
     db.conn.exec(giftsSchemaSqlite);
+    db.conn.exec(phoneVerificationsSchema);
   }
 }
 

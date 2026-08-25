@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   smsUnits,
   segmentsForUnits,
@@ -10,6 +10,9 @@ import {
 type Props = { importToken: string; activeCount: number; newCount: number };
 
 export default function BroadcastForm({ importToken, activeCount, newCount }: Props) {
+  const ids = useId();
+  const messageId = `${ids}-message`;
+  const counterId = `${ids}-counter`;
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<"all" | "new_only">("all");
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -89,35 +92,47 @@ export default function BroadcastForm({ importToken, activeCount, newCount }: Pr
             borderRadius: "6px",
             fontWeight: "bold",
             backgroundColor: feedback.ok ? "#e8f5e9" : "#ffebee",
-            color: feedback.ok ? "#2e7d32" : "#c62828",
+            color: feedback.ok ? "#1b5e20" : "#b71c1c",
           }}
-          role="status"
+          role={feedback.ok ? "status" : "alert"}
         >
           {feedback.msg}
         </p>
       )}
       <form onSubmit={handleSubmit}>
-        <textarea
-          name="message"
-          placeholder="הקלידו הודעה כאן..."
-          required
-          disabled={sending}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          style={{ height: "100px" }}
-          aria-describedby="sms-counter"
-        />
-        <div id="sms-counter" className="sms-counter" data-level={level}>
+        <div className="form-group">
+          <label htmlFor={messageId}>תוכן ההודעה</label>
+          <textarea
+            id={messageId}
+            name="message"
+            placeholder="הקלידו הודעה כאן..."
+            required
+            disabled={sending}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            style={{ height: "100px" }}
+            aria-describedby={counterId}
+          />
+        </div>
+        {/* aria-live: the segment count is the number that decides what a
+            broadcast costs, and it changes as the message is typed. */}
+        <div id={counterId} className="sms-counter" data-level={level} aria-live="polite">
           <span>{units} תווים</span>
           <span>
             כולל קישור הסרה: ~{totalUnits} תווים · ~{totalSegments} מקטעי SMS לנמען
           </span>
         </div>
-        <fieldset className="audience-group" style={{ border: "none" }}>
+        {/* A radio group needs a group label, not just two field labels. The
+            options sit in their own flex row: a <legend> inside a flex
+            container lays out inconsistently across browsers. */}
+        <fieldset className="audience-group">
+          <legend>קהל היעד</legend>
+          <div className="audience-options">
           <label>
             <input
               type="radio"
               name="audience"
+              value="all"
               checked={audience === "all"}
               onChange={() => setAudience("all")}
               disabled={sending}
@@ -128,18 +143,20 @@ export default function BroadcastForm({ importToken, activeCount, newCount }: Pr
             <input
               type="radio"
               name="audience"
+              value="new_only"
               checked={audience === "new_only"}
               onChange={() => setAudience("new_only")}
               disabled={sending || newCount === 0}
             />
             רק חדשים שטרם קיבלו הודעה ({newCount})
           </label>
+          </div>
         </fieldset>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
           <button
             type="submit"
             disabled={sending || message.trim() === "" || recipients === 0}
-            style={{ width: "auto", flex: "1 1 auto" }}
+            style={{ width: "auto", flex: "1 1 12rem" }}
           >
             {sending ? "שולח..." : `🚀 שלח ל-${recipients} לקוחות`}
           </button>
@@ -148,9 +165,9 @@ export default function BroadcastForm({ importToken, activeCount, newCount }: Pr
             className="btn-secondary"
             onClick={handleTestSend}
             disabled={sending || message.trim() === ""}
-            style={{ width: "auto" }}
+            style={{ width: "auto", flex: "1 1 10rem" }}
           >
-            📱 שלח בדיקה אליי
+            <span aria-hidden="true">📱 </span>שלח בדיקה אליי
           </button>
         </div>
       </form>

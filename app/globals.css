@@ -12,8 +12,18 @@
   --danger: #ef5350;
   --ok: #81c784;
   --brand-red: #d32f2f;
+  /* Focus ring: brighter than --accent so it clears 3:1 against both the dark
+     glass surfaces and the light admin cards (WCAG 1.4.11). */
+  --focus-ring: #ffd97d;
   --radius: 20px;
   --radius-sm: 10px;
+  /* Notch/home-indicator insets. They resolve to 0 unless the viewport is
+     declared `viewport-fit=cover` (see app/layout.tsx) — without that they are
+     silently 0 on every device and the padding below does nothing. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --font-body-stack: var(--font-body), system-ui, -apple-system, sans-serif;
   --font-display-stack: var(--font-display), var(--font-body), sans-serif;
 }
@@ -24,15 +34,33 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Stops iOS inflating text when a phone is rotated to landscape, while still
+     honouring pinch-zoom and the reader's own default font size. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   font-family: var(--font-body-stack);
   background: var(--bg);
   color: var(--text);
+  /* svh before dvh/vh on purpose: iOS Safari's 100vh is the *expanded*
+     viewport, so a 100vh page is taller than what is actually visible and its
+     top slides under the URL bar on first paint. */
   min-height: 100vh;
+  min-height: 100svh;
   display: flex;
-  align-items: center;
+  /* flex-start + `margin-block: auto` on the card, rather than
+     `align-items: center`: a centred flex item taller than the viewport
+     overflows equally in both directions, and the part above the top edge
+     cannot be scrolled back into view. This is the iOS "top of the form is
+     cut off" bug. */
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right))
+    calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+  overflow-wrap: break-word;
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Hero slideshow (rendered by HeroSlideshow.tsx) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -103,17 +131,38 @@ body {
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
   backdrop-filter: blur(16px) saturate(1.2);
   border: 1px solid var(--glass-border);
-  padding: 32px 24px;
+  padding: clamp(20px, 5vw, 32px) clamp(16px, 4vw, 24px);
   border-radius: var(--radius);
   width: 100%;
   max-width: 520px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   text-align: center;
+  /* Centres the card when the viewport has room and simply starts at the top
+     when it doesn't — see the note on body's align-items. */
+  margin-block: auto;
+}
+
+/* Firefox before 103 and any browser with the effect disabled render the card
+   as a flat translucent panel; without a fallback the hero photo shows through
+   at 78% and the body copy loses its contrast. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .container {
+    background: rgba(20, 17, 15, 0.95);
+  }
+}
+
+/* A 16px blur over a full-bleed fixed photo is the single most expensive thing
+   on this page; phones get a cheaper one. */
+@media (max-width: 600px) {
+  .container {
+    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    backdrop-filter: blur(10px) saturate(1.15);
+  }
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Typography â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .eyebrow {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.18em;
   color: var(--accent);
@@ -124,31 +173,38 @@ body {
 .headline {
   font-family: var(--font-display-stack);
   font-weight: 400;
-  font-size: clamp(1.9rem, 6vw, 2.7rem);
+  font-size: clamp(1.75rem, 6vw, 2.7rem);
   line-height: 1.15;
   color: var(--text);
   margin-bottom: 10px;
+  text-wrap: balance;
 }
 
 .subline {
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.6;
   margin-bottom: 18px;
+  text-wrap: pretty;
 }
 
+/* h1 shares the h2 treatment: several pages promote their heading to h1 for a
+   correct document outline, and that must not change how they look. Page-level
+   overrides (.headline, .terms-page h1, .waiter-container h1) still win. */
+h1,
 h2 {
   font-family: var(--font-display-stack);
   font-weight: 400;
   color: var(--text);
   margin-bottom: 8px;
-  font-size: 26px;
+  font-size: clamp(1.35rem, 4.5vw, 1.625rem);
+  line-height: 1.25;
 }
 
 p {
   color: var(--text-muted);
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 1.6;
 }
 
@@ -192,12 +248,12 @@ p {
 
 .benefit-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--text);
 }
 
 .benefit-text {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text-muted);
   margin: 2px 0 0;
 }
@@ -210,7 +266,7 @@ p {
 
 label {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--text);
   margin-bottom: 5px;
   font-weight: 600;
@@ -220,7 +276,15 @@ label {
 .label-hint {
   font-weight: 400;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
+}
+
+/* Help text tied to a field via aria-describedby. */
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 6px 0 0;
 }
 
 input,
@@ -233,7 +297,10 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 16px;
+  /* Never below 16px: iOS Safari zooms the whole page when a field smaller
+     than that takes focus, and never zooms back out. max() keeps that floor
+     while still growing with a reader's larger default font size. */
+  font-size: max(1rem, 16px);
   font-family: inherit;
   direction: rtl;
   text-align: right;
@@ -241,11 +308,32 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(250, 247, 242, 0.35);
+  /* 0.35 alpha measured ~1.9:1 against the field - unreadable. */
+  color: rgba(250, 247, 242, 0.62);
+  opacity: 1; /* Firefox dims placeholders again by default */
 }
 
+/* iOS gives date inputs an intrinsic width and its own internal baseline, so
+   without resetting the appearance the control is narrower than its box, sits
+   off-centre, and ignores text-align entirely. */
 input[type="date"] {
   color-scheme: dark;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: right;
+  margin: 0;
+  min-height: 1.4em;
+}
+
+/* The tap target for the picker, not just the glyph. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  padding: 6px;
+  margin: 0;
+  cursor: pointer;
 }
 
 .input-ltr {
@@ -258,12 +346,30 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.18);
+  box-shadow: 0 0 0 3px rgba(212, 168, 83, 0.28);
 }
 
+/* Keyboard focus must stay obvious on every surface in the app: the dark glass
+   card, the light admin cards, and the gold buttons. A 3px ring plus an offset
+   reads against all three (WCAG 2.4.11 / 1.4.11). */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+/* On the light admin surface the pale gold ring alone is too faint, so pair it
+   with a dark halo. */
+.admin-container :focus-visible {
+  outline-color: #1c1917;
+  box-shadow: 0 0 0 5px rgba(212, 168, 83, 0.55);
 }
 
 textarea {
@@ -280,16 +386,26 @@ button {
   width: 100%;
   min-height: 48px;
   border-radius: var(--radius-sm);
-  font-size: 16px;
+  font-size: max(1rem, 16px);
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   margin-top: 12px;
   transition: filter 0.2s, transform 0.05s;
+  /* Stops iOS painting its own rounded-grey button chrome over the gold. */
+  -webkit-appearance: none;
+  appearance: none;
+  /* Kills the 300ms tap delay and the grey flash on iOS. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-button:hover {
-  filter: brightness(1.08);
+/* Guarded so a tapped button on a touch screen does not keep the hover state
+   until the next tap somewhere else. */
+@media (hover: hover) and (pointer: fine) {
+  button:hover {
+    filter: brightness(1.08);
+  }
 }
 
 button:active {
@@ -302,26 +418,56 @@ button:disabled {
 }
 
 .btn-ghost {
-  display: inline-block;
+  /* inline-flex + centring so the 44px minimum target is filled by the label
+     rather than leaving dead space below it (WCAG 2.5.8). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 12px 18px;
   min-height: 44px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   color: var(--accent);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
+  touch-action: manipulation;
 }
 
-.btn-ghost:hover {
-  text-decoration: none;
-  border-color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover {
+    text-decoration: none;
+    border-color: var(--accent);
+  }
 }
 
 .btn-secondary {
   background: transparent;
-  border: 1px solid #bbb;
-  color: #555;
+  border: 1px solid #767676;
+  color: #444;
+}
+
+/* A button that reads as a link - used for the OTP resend / change-number
+   affordances, which must not compete with the primary submit. */
+.btn-link {
+  width: auto;
+  margin: 0;
+  padding: 10px 8px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.btn-link:disabled {
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: default;
+  opacity: 1; /* the wording already says why it is unavailable */
 }
 
 .btn-danger {
@@ -333,7 +479,7 @@ button:disabled {
 .success {
   color: var(--ok);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .error {
@@ -341,25 +487,47 @@ button:disabled {
   font-weight: 700;
 }
 
+.notice {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The shared live region under the signup form. It stays in the DOM while
+   empty so assistive tech is already watching it when a message lands. */
+.form-feedback {
+  margin: 14px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.form-feedback:empty {
+  margin: 0;
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
-a:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    text-decoration: underline;
+  }
 }
 
 .small-text {
-  font-size: 12px;
+  /* Inline-flex for the 44px target: these are real navigation links. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 12px;
-  display: block;
 }
 
 .consent {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: rgba(250, 247, 242, 0.75);
   line-height: 1.6;
   margin: 12px 0 0;
@@ -381,11 +549,13 @@ a:hover {
   line-height: 52px;
 }
 
-.success-view h3 {
+.success-view h3,
+.success-title {
   font-family: var(--font-display-stack);
   font-weight: 400;
-  font-size: 22px;
+  font-size: clamp(1.25rem, 5vw, 1.5rem);
   margin-bottom: 8px;
+  text-wrap: balance;
 }
 
 .success-actions {
@@ -399,16 +569,11 @@ a:hover {
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mobile (landing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 600px) {
   body {
-    padding: 10px;
-    align-items: flex-start;
-    padding-top: max(14px, env(safe-area-inset-top));
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-    padding-left: max(10px, env(safe-area-inset-left));
-    padding-right: max(10px, env(safe-area-inset-right));
+    padding: calc(12px + var(--safe-top)) calc(10px + var(--safe-right))
+      calc(16px + var(--safe-bottom)) calc(10px + var(--safe-left));
   }
 
   .container {
-    padding: 22px 16px;
     border-radius: 16px;
     max-width: 100%;
   }
@@ -416,6 +581,46 @@ a:hover {
   .logo-area img,
   .logo-area .logo-svg {
     max-width: 240px;
+  }
+}
+
+/* Phone held sideways: almost no height, so trade vertical rhythm for content.
+   Without this the signup form is one field tall between the two chromes. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .container {
+    padding-block: 16px;
+  }
+
+  .logo-area {
+    margin-bottom: 8px;
+  }
+
+  .logo-area img,
+  .logo-area .logo-svg {
+    max-width: 180px;
+  }
+
+  /* Not multi-column: the card is still only 520px wide, and three columns of
+     Hebrew wrap to four lines each. Just tighten the rhythm. */
+  .benefits {
+    gap: 8px;
+    margin: 12px 0 16px;
+  }
+
+  .benefit {
+    padding: 9px 12px;
+  }
+
+  .subline {
+    margin-bottom: 12px;
+  }
+}
+
+/* Roomy laptops and desktops: the card can breathe without getting wider,
+   which would hurt the line length of the Hebrew body copy. */
+@media (min-width: 1024px) {
+  .container {
+    padding: 40px 32px;
   }
 }
 
@@ -429,11 +634,23 @@ a:hover {
   color: #1c1917;
 }
 
+.admin-container h1,
 .admin-container h2,
 .admin-container h3,
 .admin-container h4 {
   font-family: var(--font-body-stack);
   color: #1c1917;
+}
+
+/* Section headings inside the admin cards were h3/h4 before the outline was
+   corrected; keep them visually the same size they were. */
+.admin-card h2,
+.stats-section h2 {
+  font-size: 1.15rem;
+}
+
+.admin-header .admin-title {
+  font-size: clamp(1.25rem, 4.5vw, 1.5rem);
 }
 
 .admin-container p {
@@ -466,7 +683,7 @@ a:hover {
 .admin-container .small-text,
 .admin-container .label-hint,
 .admin-container .consent {
-  color: #777;
+  color: #5f5a55;
 }
 
 .admin-container a {
@@ -525,7 +742,10 @@ a:hover {
 .admin-btn,
 .admin-btn-green,
 .admin-btn-logout {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
   padding: 10px 14px;
   border-radius: 8px;
   text-decoration: none;
@@ -538,14 +758,19 @@ a:hover {
   line-height: 1.25;
 }
 
+/* Scoped to .admin-container so these win over `.admin-container a`, which
+   otherwise repaints the label link-blue: #1976d2 on #4caf50 measures 1.65:1.
+   The green is darkened for the same reason — white on #4caf50 is only 2.3:1. */
+.admin-container .admin-btn-green,
 .admin-btn-green {
-  background: #4caf50;
-  color: white;
+  background: #2e7d32;
+  color: #fff;
 }
 
+.admin-container .admin-btn-logout,
 .admin-btn-logout {
   background: #333;
-  color: white;
+  color: #fff;
 }
 
 @media (max-width: 519px) {
@@ -570,7 +795,14 @@ a:hover {
 
 @media (max-width: 700px) {
   .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -579,23 +811,44 @@ a:hover {
   border: 1px solid #eee;
   border-radius: 12px;
   padding: 14px;
+  /* dt must precede dd in the markup; order puts the figure back on top. */
+  display: flex;
+  flex-direction: column;
 }
 
 .kpi-value {
-  font-size: 26px;
+  order: 1;
+}
+
+.kpi-label {
+  order: 2;
+}
+
+.kpi-sub {
+  order: 3;
+}
+
+.kpi-card dd {
+  margin: 0;
+}
+
+.kpi-value {
+  font-size: clamp(1.375rem, 5vw, 1.625rem);
   font-weight: 800;
   color: #1c1917;
 }
 
 .kpi-label {
-  font-size: 12px;
-  color: #777;
+  font-size: 0.75rem;
+  /* #777 measured 4.48:1 on white - just under the 4.5:1 floor for body text. */
+  color: #5f5a55;
   margin-top: 2px;
 }
 
 .kpi-sub {
-  font-size: 11px;
-  color: #a09a90;
+  font-size: 0.6875rem;
+  /* #a09a90 measured 2.6:1 - well under. */
+  color: #6b665f;
   margin-top: 2px;
 }
 
@@ -605,13 +858,14 @@ a:hover {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 12px;
-  color: #777;
+  font-size: 0.75rem;
+  /* #777 is 4.47:1 on white — just under the floor for 12px text. */
+  color: #5f5a55;
   margin-top: 6px;
 }
 
 .sms-counter[data-level="warn"] {
-  color: #e65100;
+  color: #b34700;
 }
 
 .sms-counter[data-level="high"] {
@@ -619,11 +873,24 @@ a:hover {
 }
 
 .audience-group {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  border: none;
+  padding: 0;
   margin: 12px 0 0;
-  font-size: 14px;
+  font-size: 0.875rem;
+}
+
+.audience-group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.audience-options {
+  display: flex;
+  gap: 8px 20px;
+  flex-wrap: wrap;
 }
 
 .audience-group label {
@@ -636,9 +903,17 @@ a:hover {
 }
 
 .audience-group input[type="radio"] {
-  width: auto;
-  min-height: 0;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  flex-shrink: 0;
   accent-color: var(--brand-red);
+  cursor: pointer;
+}
+
+.audience-group label {
+  min-height: 44px;
+  cursor: pointer;
 }
 
 /* Customer list */
@@ -661,11 +936,15 @@ a:hover {
 .admin-table-btn {
   background: none;
   border: none;
-  padding: 6px 4px;
-  min-height: 0;
+  /* Was a ~20px tall target. WCAG 2.5.8 asks for 24px minimum; a destructive
+     control next to a reversible one wants more room than that. */
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 6px;
+  min-height: 36px;
   width: auto;
-  font-size: 12px;
-  color: #1976d2;
+  font-size: 0.75rem;
+  color: #1565c0;
   cursor: pointer;
   text-decoration: underline;
   margin: 0;
@@ -683,6 +962,8 @@ a:hover {
 
 .customers-mobile {
   display: none;
+  /* Rendered as a <ul> so the card count is announced; no bullets wanted. */
+  list-style: none;
 }
 
 @media (max-width: 700px) {
@@ -713,13 +994,14 @@ a:hover {
 
 .customer-card-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: #1c1917;
+  margin: 0;
 }
 
 .customer-card-line {
-  font-size: 13px;
-  color: #555;
+  font-size: 0.8125rem;
+  color: #4f4a45;
   margin: 4px 0 0;
 }
 
@@ -731,8 +1013,13 @@ a:hover {
 
 .customer-card summary {
   cursor: pointer;
-  color: #1976d2;
-  font-size: 12px;
+  color: #1565c0;
+  font-size: 0.8125rem;
+  /* A <summary> is a real control - give it a real target. */
+  padding: 8px 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
 }
 
 .badge {
@@ -767,14 +1054,18 @@ a:hover {
 }
 
 .filter-chip {
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 16px;
+  border-radius: 22px;
+  font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
   border: 1px solid var(--brand-red);
   background: #fff;
-  color: var(--brand-red);
+  color: #b71c1c;
+  touch-action: manipulation;
 }
 
 .filter-chip[data-active="true"] {
@@ -791,9 +1082,11 @@ a:hover {
   margin-top: 28px;
 }
 
+.danger-zone h2,
 .danger-zone h3 {
   color: #b71c1c;
   margin-top: 0;
+  font-size: 1.15rem;
 }
 
 /* Stats + upload (existing responsive rules, kept) */
@@ -828,17 +1121,32 @@ a:hover {
 .admin-upload-form {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
 }
 
+/* File inputs have an intrinsic width that ignores width:100% in some engines;
+   the cap keeps the row from pushing the submit button off the card. */
+.admin-upload-form input[type="file"] {
+  max-width: 100%;
+  padding: 10px 12px;
+  line-height: 1.4;
+}
+
+.admin-upload-submit {
+  width: auto;
+  margin-top: 0;
+  flex: 0 1 auto;
+}
+
 @media (max-width: 480px) {
-  .admin-upload-form input[type="file"] {
-    max-width: 100% !important;
+  .admin-upload-form .form-group {
+    flex: 1 1 100%;
   }
 
-  .admin-upload-form button {
+  .admin-upload-submit {
     width: 100%;
+    flex: 1 1 100%;
   }
 }
 
@@ -849,39 +1157,52 @@ a:hover {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.6;
   cursor: pointer;
+  /* The whole sentence is the label, so give the tap area some vertical room
+     without making the text block feel loose. */
+  padding: 4px 0;
 }
 .consent-label input[type="checkbox"] {
-  margin-top: 3px;
-  width: 18px;
-  height: 18px;
+  margin-top: 2px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
   flex-shrink: 0;
-  accent-color: currentColor;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 .consent-label a {
   text-decoration: underline;
 }
 
 .terms-page {
-  padding-bottom: 48px;
+  /* Long-form legal text reads better wider than the signup card and left
+     aligned to the start edge. */
+  max-width: 720px;
+  padding-bottom: 40px;
+  text-align: start;
 }
 .terms-page h1 {
-  font-size: 1.6rem;
+  font-family: var(--font-display-stack);
+  font-weight: 400;
+  font-size: clamp(1.35rem, 5vw, 1.75rem);
+  line-height: 1.25;
   margin-bottom: 4px;
+  text-wrap: balance;
 }
 .terms-page h2 {
-  font-size: 1.1rem;
-  margin: 20px 0 6px;
+  font-size: clamp(1rem, 3.5vw, 1.15rem);
+  margin: 24px 0 6px;
 }
 .terms-page p {
-  line-height: 1.7;
+  font-size: 0.9375rem;
+  line-height: 1.75;
 }
-.terms-updated,
-.terms-draft-note {
-  font-size: 0.8rem;
-  opacity: 0.7;
+.terms-updated {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
 
 
@@ -972,7 +1293,7 @@ a:hover {
   border-radius: 14px;
   color: var(--text);
   font-family: inherit;
-  font-size: 16px; /* 16px stops iOS zooming the field on focus */
+  font-size: max(1rem, 16px); /* below 16px iOS zooms the page on focus */
   padding: 13px 44px 13px 42px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
@@ -1073,7 +1394,10 @@ a:hover {
 .wt-table-wrap {
   border: 1px solid var(--wt-line);
   border-radius: 14px;
-  overflow: hidden;
+  /* auto, not hidden: on a narrow laptop the four columns can outgrow the
+     window, and hidden would silently cut the last one off. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--wt-panel);
 }
 
@@ -1087,7 +1411,7 @@ a:hover {
   top: 0;
   z-index: 2;
   background: #332b26;
-  font-size: 10.5px;
+  font-size: 0.71875rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1152,10 +1476,12 @@ a:hover {
 
 .wt-name {
   display: block;
-  font-size: 15.5px;
+  font-family: var(--font-body-stack);
+  font-size: 0.96875rem;
   font-weight: 600;
   color: var(--text);
   line-height: 1.3;
+  margin: 0;
 }
 
 .wt-phone {
@@ -1250,9 +1576,9 @@ a:hover {
 }
 
 .rw-btn-sub {
-  font-size: 10px;
+  font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 .rw-chip {
@@ -1267,7 +1593,9 @@ a:hover {
 /* Waiting: the reward's colour, outlined — visible but not actionable. */
 .rw-chip-wait {
   border: 1px dashed currentColor;
-  opacity: 0.75;
+  /* 0.75 dropped the plum and salmon hues below 4.5:1 on the panel; the dashed
+     border already carries the "not yet" meaning without dimming the text. */
+  opacity: 0.92;
 }
 
 .rw-joining .rw-chip-wait {
@@ -1435,9 +1763,11 @@ a:hover {
   }
 }
 
-/* A tall grid would be clipped by the body's vertical centring. */
-body:has(.waiter-container) {
-  align-items: flex-start;
+/* Marketing pages centre in the viewport (see .container's margin-block).
+   The data screens are read top-down and should always start at the top. */
+.waiter-container,
+.admin-container {
+  margin-block: 0 auto;
 }
 
 .waiter-container .admin-header {
@@ -1494,5 +1824,237 @@ body:has(.waiter-container) {
 
   .rw-btn {
     transition: none;
+  }
+}
+
+
+/* ═════════════════ Accessibility utilities ═════════════════ */
+
+/* Visible to assistive technology, invisible on screen. Used for the parts of
+   a control that a sighted reader gets from colour, position or an icon. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* First tab stop on every page: jumps past the header straight to the content.
+   Physical left/translateX so it stays centred in both writing directions. */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 100;
+  padding: 12px 22px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  transform: translate(-50%, -140%);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+/* Headings and regions that only ever receive focus programmatically (the step
+   change in the signup form) must not paint a ring for mouse users. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* The signup form keeps its first step mounted-but-hidden between steps. Make
+   sure no later `display` declaration can resurrect a hidden element. */
+[hidden] {
+  display: none !important;
+}
+
+/* ═════════════════ SMS verification step ═════════════════ */
+
+.otp-form {
+  text-align: start;
+}
+
+.otp-title {
+  font-family: var(--font-display-stack);
+  font-weight: 400;
+  font-size: clamp(1.15rem, 4.5vw, 1.4rem);
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.otp-hint {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+/* <bdi> in the markup keeps the Latin digits from reordering inside the
+   surrounding Hebrew sentence. */
+.otp-phone {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.otp-input {
+  text-align: center;
+  font-size: clamp(1.5rem, 9vw, 2rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.35em;
+  /* Letter-spacing is applied after the last digit too, which shifts the group
+     off-centre; the indent puts it back. */
+  text-indent: 0.35em;
+  min-height: 64px;
+  padding: 12px;
+}
+
+.otp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 14px;
+  margin-top: 4px;
+}
+
+/* ═════════════════ User preference overrides ═════════════════ */
+
+/* Belt-and-braces companion to the targeted reduced-motion rules above: any
+   animation added later is damped by default rather than opted out one by one. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: #ddd8d2;
+    --glass-border: rgba(212, 168, 83, 0.65);
+  }
+
+  .container {
+    background: rgba(10, 8, 7, 0.97);
+  }
+
+  input,
+  textarea,
+  select {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgba(250, 247, 242, 0.8);
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  .admin-container p,
+  .admin-container label,
+  .kpi-label,
+  .kpi-sub,
+  .admin-container .small-text,
+  .admin-container .label-hint {
+    color: #26221e;
+  }
+
+  .benefit,
+  .admin-card,
+  .kpi-card,
+  .customer-card {
+    border-color: rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Windows High Contrast / forced colours replaces every colour we set, so any
+   meaning carried purely by a background - a reward's hue, a status badge, the
+   selected filter chip - would vanish. Give each one a border and a glyph. */
+@media (forced-colors: active) {
+  .hero-bg {
+    display: none;
+  }
+
+  .badge,
+  .rw-chip,
+  .rw-btn,
+  .filter-chip,
+  .wt-flash,
+  .wt-error {
+    border: 1px solid currentColor;
+  }
+
+  .filter-chip[aria-current="page"]::after,
+  .filter-chip[data-active="true"]::after {
+    content: " ✓";
+  }
+
+  .wt-card-row dt::before {
+    outline: 1px solid CanvasText;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+/* The club terms are the one page people actually print or save as PDF. */
+@media print {
+  .hero-bg,
+  .skip-link,
+  .success-actions,
+  form {
+    display: none !important;
+  }
+
+  body {
+    display: block;
+    background: #fff;
+    color: #000;
+    padding: 0;
+  }
+
+  .container {
+    max-width: none;
+    background: #fff;
+    color: #000;
+    border: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .container p,
+  .terms-page h1,
+  .terms-page h2,
+  .terms-updated {
+    color: #000;
+  }
+
+  a {
+    color: #000;
   }
 }

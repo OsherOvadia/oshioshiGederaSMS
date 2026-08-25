@@ -26,7 +26,7 @@ export default async function WaiterPage() {
   }
 
   return (
-    <main className="container waiter-container">
+    <main className="container waiter-container" id="main-content">
       <div className="waiter-inner">
       <div className="admin-header">
         <div className="admin-title">

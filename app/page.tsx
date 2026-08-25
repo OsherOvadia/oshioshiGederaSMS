@@ -26,7 +26,7 @@ export default function HomePage() {
   return (
     <>
       <HeroSlideshow />
-      <main className="container">
+      <main className="container" id="main-content">
         <div className="logo-area">
           <Logo />
         </div>

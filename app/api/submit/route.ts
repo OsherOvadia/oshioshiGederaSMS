@@ -8,8 +8,10 @@ import { welcomeSms, welcomeBackSms } from "@/lib/sms-messages";
 import { CONSENT_VERSION } from "@/lib/consent";
 import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
 import { getAppSecret } from "@/lib/security";
+import { consumeSignupToken } from "@/lib/phone-verification";
+import { isPhoneVerificationRequired } from "@/lib/features";
 
-export type SubmitErrorKey = SubmitError | "already_registered" | "system" | "rate";
+export type SubmitErrorKey = SubmitError | "already_registered" | "system" | "rate" | "verification_required";
 
 function wantsJson(req: NextRequest): boolean {
   const accept = req.headers.get("accept") ?? "";
@@ -58,9 +60,26 @@ export async function POST(req: NextRequest) {
     if (existing) {
       const isActive = existing.active === true || existing.active === 1;
       if (isActive) {
+        if (db.type === "sqlite") db.conn.close();
         if (wantsJson(req)) return jsonResponse(false, "already_registered");
         return NextResponse.redirect(new URL("/?error=already_registered", req.url));
       }
+    }
+
+    // The gate: while REQUIRE_PHONE_VERIFICATION is on, a membership is only
+    // ever created for a number whose owner answered an SMS code. The token was
+    // minted by /api/signup/verify, is bound to this exact phone, expires, and
+    // is spent atomically here — so it cannot be replayed, reused for a
+    // different number, or forged client-side. Checked after the duplicate
+    // check so an already-registered customer doesn't burn a token for nothing.
+    //
+    // The flag is read here, at request time, rather than trusted from the
+    // client: a browser holding a stale copy of the page can never talk the
+    // server out of verifying.
+    if (isPhoneVerificationRequired() && !(await consumeSignupToken(db, phone, form.get("verification_token")))) {
+      if (db.type === "sqlite") db.conn.close();
+      if (wantsJson(req)) return jsonResponse(false, "verification_required");
+      return NextResponse.redirect(new URL("/?error=verification_required", req.url));
     }
 
     const consentAt = new Date().toISOString();

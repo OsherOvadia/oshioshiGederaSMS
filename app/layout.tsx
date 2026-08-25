@@ -21,7 +21,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  // No maximumScale / userScalable: capping zoom fails WCAG 1.4.4, and iOS
+  // Safari ignores the cap anyway while Android honours it.
+  //
+  // viewportFit: "cover" is what makes env(safe-area-inset-*) resolve to real
+  // numbers on a notched iPhone. Without it those insets are all 0 and the
+  // safe-area padding in globals.css silently does nothing — which is why the
+  // layout ran under the notch and the home indicator.
+  viewportFit: "cover",
   themeColor: "#0c0a09",
 };
 
@@ -32,7 +39,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} ${secularOne.variable}`}>
-      <body>{children}</body>
+      <body>
+        <a className="skip-link" href="#main-content">
+          דילוג לתוכן הראשי
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 // One column per reward type, in the order a waiter is most likely to need it.
@@ -42,6 +42,9 @@ function shortDate(iso: string | null): string {
 
 export default function WaiterTable({ customers }: { customers: WaiterCustomerView[] }) {
   const router = useRouter();
+  const ids = useId();
+  const searchId = `${ids}-search`;
+  const metaId = `${ids}-meta`;
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [busyGiftId, setBusyGiftId] = useState<number | null>(null);
@@ -108,11 +111,23 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
     // Newest first: if a member somehow holds two gifts of one type, the
     // actionable one should be on top.
     const gifts = customer.gifts.filter((g) => g.type === type).sort((a, b) => b.id - a.id);
-    if (gifts.length === 0) return <span className="rw-empty" aria-label="אין מתנה">·</span>;
+    if (gifts.length === 0) {
+      // aria-label on a plain span is ignored by several screen readers; real
+      // text in a visually-hidden span is not.
+      return (
+        <>
+          <span className="rw-empty" aria-hidden="true">
+            ·
+          </span>
+          <span className="sr-only">אין מתנה</span>
+        </>
+      );
+    }
     return (
       <div className="rw-stack">
         {gifts.map((g) => {
           if (g.status === "available") {
+            const validity = g.valid_until ? `בתוקף עד ${shortDate(g.valid_until)}` : "ללא הגבלת תוקף";
             return (
               <button
                 key={g.id}
@@ -120,23 +135,43 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
                 className="rw-btn"
                 disabled={busyGiftId !== null}
                 onClick={() => redeem(customer.name, g)}
-                title={g.valid_until ? `בתוקף עד ${shortDate(g.valid_until)}` : "ללא תוקף"}
+                title={validity}
               >
                 <span className="rw-btn-label">{busyGiftId === g.id ? "רגע…" : "מימוש"}</span>
-                {g.valid_until && <span className="rw-btn-sub">עד {shortDate(g.valid_until)}</span>}
+                {/* Without this every button on the screen is just "מימוש". */}
+                <span className="sr-only">
+                  {" "}
+                  {g.label} של {customer.name || "לקוח ללא שם"} — {validity}
+                </span>
+                {g.valid_until && (
+                  <span className="rw-btn-sub" aria-hidden="true">
+                    עד {shortDate(g.valid_until)}
+                  </span>
+                )}
               </button>
             );
           }
           if (g.status === "not_yet") {
             return (
               <span key={g.id} className="rw-chip rw-chip-wait">
-                מ־{shortDate(g.valid_from)}
+                <span className="sr-only">{g.label} — ניתן למימוש החל מ־</span>
+                <span aria-hidden="true">מ־</span>
+                {shortDate(g.valid_from)}
+              </span>
+            );
+          }
+          if (g.status === "expired") {
+            return (
+              <span key={g.id} className="rw-chip rw-chip-wait">
+                <span className="sr-only">{g.label} — </span>פג תוקף
               </span>
             );
           }
           return (
             <span key={g.id} className="rw-chip rw-chip-used">
-              ✓ {shortDate(g.redeemed_at)}
+              <span className="sr-only">{g.label} — מומשה ב־</span>
+              <span aria-hidden="true">✓ </span>
+              {shortDate(g.redeemed_at)}
             </span>
           );
         })}
@@ -147,16 +182,23 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
   return (
     <>
       <div className="wt-search">
+        <label className="sr-only" htmlFor={searchId}>
+          חיפוש לקוח לפי שם או טלפון
+        </label>
         <span className="wt-search-icon" aria-hidden="true">
           ⌕
         </span>
         <input
+          id={searchId}
           type="search"
           placeholder="שם או טלפון…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="חיפוש לקוח לפי שם או טלפון"
+          aria-describedby={metaId}
           autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
         />
         {query && (
           <button type="button" className="wt-search-clear" onClick={() => setQuery("")} aria-label="נקה חיפוש">
@@ -165,7 +207,9 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
         )}
       </div>
 
-      <div className="wt-meta">
+      {/* Announces the result count as the waiter types, so the search is
+          usable without watching the list redraw. */}
+      <div className="wt-meta" id={metaId} role="status" aria-live="polite">
         <span>
           <strong>{filtered.length}</strong> {hasQuery ? `מתוך ${customers.length}` : "לקוחות"}
         </span>
@@ -187,14 +231,18 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
       )}
 
       {/* Wide screens: one row per member, one column per reward */}
-      <div className="wt-table-wrap">
+      <div className="wt-table-wrap" role="region" aria-label="מתנות לפי לקוח" tabIndex={0}>
         <table className="wt-table">
+          <caption className="sr-only">
+            לקוחות פעילים והמתנות שלהם — מתנת הצטרפות, יום הולדת ויום נישואין
+          </caption>
           <thead>
             <tr>
               <th scope="col">לקוח</th>
               {COLUMNS.map((col) => (
-                <th scope="col" key={col.type} className={`wt-th-${col.type}`} title={col.full}>
-                  {col.label}
+                <th scope="col" key={col.type} className={`wt-th-${col.type}`}>
+                  <span aria-hidden="true">{col.label}</span>
+                  <span className="sr-only">{col.full}</span>
                 </th>
               ))}
             </tr>
@@ -212,7 +260,8 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
                 <th scope="row" className="wt-who">
                   <span className="wt-name">{c.name || "—"}</span>
                   <a className="wt-phone" href={`tel:${c.phone}`}>
-                    {localPhone(c.phone)}
+                    <span className="sr-only">חיוג ל־</span>
+                    <bdi>{localPhone(c.phone)}</bdi>
                   </a>
                 </th>
                 {COLUMNS.map((col) => (
@@ -234,9 +283,10 @@ export default function WaiterTable({ customers }: { customers: WaiterCustomerVi
         {shown.map((c, i) => (
           <article key={c.phone} className="wt-card" style={{ animationDelay: `${Math.min(i, STAGGER_CAP) * 35}ms` }}>
             <header className="wt-card-head">
-              <span className="wt-name">{c.name || "—"}</span>
+              <h2 className="wt-name">{c.name || "—"}</h2>
               <a className="wt-phone" href={`tel:${c.phone}`}>
-                {localPhone(c.phone)}
+                <span className="sr-only">חיוג ל־</span>
+                <bdi>{localPhone(c.phone)}</bdi>
               </a>
             </header>
             <dl className="wt-card-rewards">

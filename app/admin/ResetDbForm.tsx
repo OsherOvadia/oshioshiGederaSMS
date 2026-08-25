@@ -11,7 +11,13 @@ export default function ResetDbForm({ importToken }: { importToken: string }) {
 
   if (!open) {
     return (
-      <button type="button" className="btn-danger" style={{ width: "auto" }} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="btn-danger"
+        style={{ width: "auto" }}
+        aria-expanded={false}
+        onClick={() => setOpen(true)}
+      >
         איפוס מאגר (מחיקת כל הלקוחות)…
       </button>
     );
@@ -26,17 +32,20 @@ export default function ResetDbForm({ importToken }: { importToken: string }) {
       }}
     >
       <input type="hidden" name="import_token" value={importToken} />
-      <p style={{ fontSize: "13px", fontWeight: 600, color: "#b71c1c" }}>
+      <p id="reset-db-warning" style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#b71c1c" }}>
         פעולה זו תמחק את כל הלקוחות לצמיתות. אין שחזור. כדי להמשיך, הקלידו: <strong>{CONFIRM_WORD}</strong>
       </p>
-      <input
-        value={typed}
-        onChange={(e) => setTyped(e.target.value)}
-        placeholder={CONFIRM_WORD}
-        aria-label={`הקלידו ${CONFIRM_WORD} לאישור`}
-        autoComplete="off"
-        style={{ maxWidth: "200px" }}
-      />
+      <div className="form-group" style={{ maxWidth: "220px" }}>
+        <label htmlFor="reset-db-confirm">אישור בכתב</label>
+        <input
+          id="reset-db-confirm"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          placeholder={CONFIRM_WORD}
+          aria-describedby="reset-db-warning"
+          autoComplete="off"
+        />
+      </div>
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         <button type="submit" className="btn-danger" disabled={!armed} style={{ width: "auto" }}>
           מחק את כל הלקוחות

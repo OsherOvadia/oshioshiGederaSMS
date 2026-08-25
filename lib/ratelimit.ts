@@ -60,6 +60,12 @@ export async function checkRateLimit(
 export const LIMITS = {
   home: { max: 20, window: "minute" },
   submit: { max: 5, window: "minute" },
+  // Signup OTP. These bound abuse *per IP*; the per-number cooldown and
+  // hourly send cap live in the phone_verifications row, where rotating IPs
+  // cannot reset them. Verify is looser than start because a legitimate
+  // customer mistypes a code far more often than they request a new one.
+  signupStart: { max: 5, window: "minute" },
+  signupVerify: { max: 12, window: "minute" },
   login: { max: 5, window: "minute" },
   exportCsv: { max: 10, window: "hour" },
   broadcast: { max: 3, window: "hour" },

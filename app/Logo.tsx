@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+// The rendered logo is capped at 300px wide by .logo-area; these are the
+// intrinsic dimensions, declared so the browser reserves the right box before
+// the file decodes. Without them the whole card jumps down on first paint —
+// the layout shift that reads as "broken" on a slow phone connection.
+const LOGO_WIDTH = 401;
+const LOGO_HEIGHT = 126;
+
 export default function Logo() {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -13,7 +20,7 @@ export default function Logo() {
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         role="img"
-        aria-label="לוגו"
+        aria-label="Oshi Oshi גדרה"
       >
         <rect width="200" height="60" rx="8" fill="#d32f2f" opacity={0.9} />
         <text x="100" y="38" textAnchor="middle" fill="white" fontSize="28" fontWeight="bold" fontFamily="Georgia, serif">
@@ -26,9 +33,11 @@ export default function Logo() {
   return (
     <img
       src="/logo.png"
-      alt="לוגו"
+      alt="Oshi Oshi גדרה"
+      width={LOGO_WIDTH}
+      height={LOGO_HEIGHT}
+      decoding="async"
       onError={() => setImgFailed(true)}
-      style={{ maxWidth: "100%", height: "auto" }}
     />
   );
 }

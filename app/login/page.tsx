@@ -17,18 +17,32 @@ export default async function LoginPage({
   const isSystem = error === "system";
 
   return (
-    <div className="container">
+    <main className="container" id="main-content">
       <div className="logo-area">
         <Logo />
       </div>
-      <h2>כניסה לצוות</h2>
-      {isWrong && <p className="error">סיסמה שגויה</p>}
-      {isRate && <p className="error">יותר מדי ניסיונות. נסה שוב מאוחר יותר.</p>}
-      {isSystem && <p className="error">שגיאת מערכת. בדוק את ההגדרות (מאגר נתונים, SECRET_KEY).</p>}
+      <h1>כניסה לצוות</h1>
+      {/* Server-rendered errors (the no-JS POST path). role="alert" so they are
+          announced when the page loads with ?error= in the URL. */}
+      {isWrong && (
+        <p className="error" role="alert">
+          סיסמה שגויה
+        </p>
+      )}
+      {isRate && (
+        <p className="error" role="alert">
+          יותר מדי ניסיונות. נסה שוב מאוחר יותר.
+        </p>
+      )}
+      {isSystem && (
+        <p className="error" role="alert">
+          שגיאת מערכת. בדוק את ההגדרות (מאגר נתונים, SECRET_KEY).
+        </p>
+      )}
       <LoginForm />
       <Link href="/" className="small-text">
-        חזור לדף הבית
+        חזרה לדף הבית
       </Link>
-    </div>
+    </main>
   );
 }

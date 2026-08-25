@@ -45,6 +45,41 @@ type Props = {
   cityCounts: CityCount[];
 };
 
+/**
+ * The text alternative for a chart (WCAG 1.1.1). recharts emits unlabelled
+ * <path> elements, so each chart is hidden from assistive technology and the
+ * same numbers are offered as a real table beside it.
+ */
+function ChartDataTable({
+  caption,
+  columns,
+  rows,
+}: {
+  caption: string;
+  columns: [string, string];
+  rows: { label: string; value: number }[];
+}) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{columns[0]}</th>
+          <th scope="col">{columns[1]}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.label}>
+            <th scope="row">{r.label}</th>
+            <td>{r.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function groupCityCounts(items: CityCount[]): CityCount[] {
   if (items.length <= PIE_TOP_N) return items;
   const top = items.slice(0, PIE_TOP_N);
@@ -95,8 +130,8 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
   const total = pieData.reduce((s, x) => s + x.value, 0);
 
   return (
-    <div className="stats-section" style={{ direction: "rtl", marginBottom: "28px" }}>
-      <h3 className="stats-section-title" style={{
+    <section className="stats-section" aria-labelledby="stats-heading" style={{ direction: "rtl", marginBottom: "28px" }}>
+      <h2 id="stats-heading" className="stats-section-title" style={{
         borderBottom: "2px solid #b71c1c",
         paddingBottom: "6px",
         display: "inline-block",
@@ -106,7 +141,7 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
         color: "#1a1a1a",
       }}>
         סטטיסטיקות
-      </h3>
+      </h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", alignItems: "stretch" }}>
         <div className="stats-card" style={{
           flex: "1 1 320px",
@@ -117,16 +152,22 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
           borderRadius: "12px",
           boxShadow: CARD_SHADOW,
         }}>
-          <h4 style={{
+          <h3 style={{
             margin: "0 0 16px 0",
             fontSize: "1rem",
             fontWeight: 600,
             color: "#333",
           }}>
             רישומים לפי תאריך
-          </h4>
+          </h3>
           {signupsByDate.length > 0 ? (
-            <div className="stats-chart-container">
+            <>
+            <ChartDataTable
+              caption="רישומים לפי תאריך"
+              columns={["תאריך", "רישומים"]}
+              rows={signupsByDate.map((d) => ({ label: d.date, value: d.count }))}
+            />
+            <div className="stats-chart-container" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={signupsByDate} margin={{ top: 20, right: 16, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
@@ -159,8 +200,9 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
               </BarChart>
             </ResponsiveContainer>
             </div>
+            </>
           ) : (
-            <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>אין עדיין נתוני רישום.</p>
+            <p style={{ color: "#5f5a55", fontSize: "0.875rem", margin: 0 }}>אין עדיין נתוני רישום.</p>
           )}
         </div>
         <div className="stats-card stats-card-cities" style={{
@@ -172,7 +214,7 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
           borderRadius: "16px",
           boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
         }}>
-          <h4 style={{
+          <h3 style={{
             margin: "0 0 20px 0",
             fontSize: "1.05rem",
             fontWeight: 700,
@@ -180,15 +222,25 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
             letterSpacing: "0.02em",
           }}>
             ערים
-          </h4>
+          </h3>
           {pieData.length > 0 ? (
-            <div className="stats-chart-container" style={{ minHeight: "220px" }}>
+            <>
+            <ChartDataTable
+              caption={`לקוחות לפי עיר (סה״כ ${total})`}
+              columns={["עיר", "לקוחות"]}
+              rows={pieData.map((d) => ({ label: d.name, value: d.value }))}
+            />
+            <div className="stats-chart-container" aria-hidden="true" style={{ minHeight: "220px" }}>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
                   <Pie
                     data={pieData}
                     dataKey="value"
                     nameKey="name"
+                    // recharts focuses the pie root by default; the chart is
+                    // aria-hidden in favour of the data table, and a focusable
+                    // node inside an aria-hidden subtree is a WCAG failure.
+                    rootTabIndex={-1}
                     cx="50%"
                     cy="50%"
                     innerRadius={58}
@@ -235,11 +287,12 @@ export default function AdminStats({ signupsByDate, cityCounts }: Props) {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            </>
           ) : (
-            <p style={{ color: "#666", fontSize: "14px", margin: 0 }}>אין נתוני ערים.</p>
+            <p style={{ color: "#5f5a55", fontSize: "0.875rem", margin: 0 }}>אין נתוני ערים.</p>
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

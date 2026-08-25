@@ -20,3 +20,12 @@ export function birthdaySms(name: string): string {
 export function anniversarySms(name: string): string {
   return `${BRAND}: היי ${name}, חוגגים יום נישואין החודש? 💍 מזל טוב! מחכה לכם מתנת יום נישואין במסעדה. נשמח לחגוג איתכם! 🍣`;
 }
+
+/**
+ * Verification code for club signup. This is a transactional message, not a
+ * "davar pirsomet" under §30A, so it carries no marketing content and
+ * /api/send_sms_task's opt-out footer is deliberately not appended to it.
+ */
+export function verificationSms(code: string, ttlMinutes: number): string {
+  return `${BRAND}: ${code} הוא קוד האימות שלך להצטרפות למועדון. הקוד תקף ל-${ttlMinutes} דקות. אם לא ביקשת קוד, אפשר להתעלם מהודעה זו.`;
+}

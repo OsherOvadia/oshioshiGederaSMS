@@ -4,11 +4,8 @@ import { getUnsubscribeKeyword } from "@/lib/unsubscribe";
 import { getPublicAppUrl } from "@/lib/app-url";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
+import { sendSmsViaGateway } from "@/lib/sms-gateway";
 import { initDb, getDb, runDb } from "@/lib/db";
-
-const SMS_LOGIN = process.env.ANDROID_SMS_GATEWAY_LOGIN;
-const SMS_PASS = process.env.ANDROID_SMS_GATEWAY_PASSWORD;
-const SMS_URL = (process.env.ANDROID_SMS_GATEWAY_API_URL || "https://api.sms-gate.app/3rdparty/v1").replace(/\/$/, "");
 
 export async function POST(req: NextRequest) {
   const ip = await getClientIp();
@@ -40,42 +37,23 @@ export async function POST(req: NextRequest) {
   const unsubLink = `${baseUrl.replace(/\/+$/, "")}/unsubscribe/${clean}?token=${token}`;
   const finalMsg = `${message}\n\nלהסרה: השב/י ${getUnsubscribeKeyword()} או לחצ/י כאן: ${unsubLink}`;
 
-  const payload = {
-    textMessage: { text: finalMsg },
-    phoneNumbers: [phone],
-    withDeliveryReport: true,
-  };
+  const result = await sendSmsViaGateway(phone, finalMsg);
+  if (!result.ok) {
+    console.error("SMS Gateway Error", result.status ?? "", result.error);
+    return NextResponse.json({ status: "error", error: result.error }, { status: 500 });
+  }
 
   try {
-    const auth = Buffer.from(`${SMS_LOGIN}:${SMS_PASS}`).toString("base64");
-    const res = await fetch(`${SMS_URL}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("SMS Gateway Error", res.status, text);
-      return NextResponse.json({ status: "error", error: text }, { status: 500 });
-    }
-    try {
-      await initDb();
-      const db = getDb();
-      const now = new Date().toISOString();
-      await runDb(db, "UPDATE customers SET received_message_at = $2 WHERE phone = $1", [phone, now]);
-      if (db.type === "sqlite") db.conn.close();
-    } catch (e) {
-      console.error("Failed to set received_message_at", phone, e);
-    }
-    const json = await res.json();
-    return NextResponse.json({ status: "sent", phone, gateway_response: json });
+    await initDb();
+    const db = getDb();
+    const now = new Date().toISOString();
+    // $1 before $2: lib/db.ts rewrites placeholders positionally for SQLite,
+    // so the numbers must appear in ascending order in the statement.
+    await runDb(db, "UPDATE customers SET received_message_at = $1 WHERE phone = $2", [now, phone]);
+    if (db.type === "sqlite") db.conn.close();
   } catch (e) {
-    console.error("Worker SMS Fail", phone, e);
-    return NextResponse.json({ status: "error", error: String(e) }, { status: 500 });
+    console.error("Failed to set received_message_at", phone, e);
   }
+
+  return NextResponse.json({ status: "sent", phone, gateway_response: result.body });
 }

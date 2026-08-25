@@ -30,7 +30,7 @@ export default function TermsPage() {
   const contactLine = channels.length > 0 ? `, ${channels.join(", ")}` : "";
 
   return (
-    <main className="container terms-page" dir="rtl">
+    <main className="container terms-page" id="main-content" dir="rtl">
       <h1>תקנון מועדון הלקוחות ומדיניות פרטיות</h1>
       <p className="terms-updated">עדכון אחרון: {UPDATED}</p>
 
@@ -200,7 +200,6 @@ export default function TermsPage() {
         <p>על תקנון זה יחול הדין הישראלי, וסמכות השיפוט נתונה לבתי המשפט המוסמכים במחוז המרכז.</p>
       </section>
 
-      <p className="terms-draft-note">* נוסח זה הינו טיוטה וכפוף לאישור משפטי.</p>
     </main>
   );
 }

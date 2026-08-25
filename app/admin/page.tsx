@@ -107,10 +107,10 @@ export default async function AdminPage({
   }));
 
   return (
-    <div className="container admin-container">
+    <main className="container admin-container" id="main-content">
       <div style={{ direction: "rtl", textAlign: "right" }}>
         <div className="admin-header">
-          <h2 className="admin-title">ניהול לקוחות 🍣</h2>
+          <h1 className="admin-title">ניהול לקוחות 🍣</h1>
           <div className="admin-actions">
             <Link
               href="/api/admin/export-csv"
@@ -118,7 +118,8 @@ export default async function AdminPage({
               target="_blank"
               rel="noopener noreferrer"
             >
-              📊 ייצוא CSV
+              <span aria-hidden="true">📊 </span>ייצוא CSV
+              <span className="sr-only"> (נפתח בחלון חדש)</span>
             </Link>
             <Link href="/api/logout" className="admin-btn admin-btn-logout">
               יציאה
@@ -126,62 +127,90 @@ export default async function AdminPage({
           </div>
         </div>
 
-        <div className="kpi-grid">
+        {/* A description list: each figure is the value of a named term, which
+            is what a screen reader should hear ("active customers: 42") rather
+            than a bare number. HTML requires dt before dd, so .kpi-card uses
+            flex `order` to keep the figure on top visually. */}
+        <dl className="kpi-grid" aria-label="נתונים כלליים">
           <div className="kpi-card">
-            <div className="kpi-value">{kpis.active}</div>
-            <div className="kpi-label">לקוחות פעילים</div>
-            <div className="kpi-sub">מתוך {kpis.total} רשומים</div>
+            <dt className="kpi-label">לקוחות פעילים</dt>
+            <dd className="kpi-value">{kpis.active}</dd>
+            <dd className="kpi-sub">מתוך {kpis.total} רשומים</dd>
           </div>
           <div className="kpi-card">
-            <div className="kpi-value">{kpis.newLast7}</div>
-            <div className="kpi-label">חדשים ב-7 ימים</div>
+            <dt className="kpi-label">חדשים ב-7 ימים</dt>
+            <dd className="kpi-value">{kpis.newLast7}</dd>
           </div>
           <div className="kpi-card">
-            <div className="kpi-value">{kpis.removedLast30}</div>
-            <div className="kpi-label">הוסרו ב-30 יום</div>
+            <dt className="kpi-label">הוסרו ב-30 יום</dt>
+            <dd className="kpi-value">{kpis.removedLast30}</dd>
           </div>
           <div className="kpi-card">
-            <div className="kpi-value">{kpis.neverMessaged}</div>
-            <div className="kpi-label">טרם קיבלו הודעה</div>
+            <dt className="kpi-label">טרם קיבלו הודעה</dt>
+            <dd className="kpi-value">{kpis.neverMessaged}</dd>
           </div>
-        </div>
+        </dl>
 
-        <div className="admin-card">
-          <h3 style={{ marginTop: 0 }}>📢 שליחת הודעה</h3>
+        <section className="admin-card" aria-labelledby="broadcast-heading">
+          <h2 id="broadcast-heading" style={{ marginTop: 0 }}>
+            <span aria-hidden="true">📢 </span>שליחת הודעה
+          </h2>
           <BroadcastForm importToken={importToken} activeCount={kpis.active} newCount={kpis.neverMessaged} />
-          {msg && <p style={{ color: "#1565c0", fontWeight: "bold", marginTop: "10px" }}>{msg}</p>}
-        </div>
+          {msg && (
+            <p style={{ color: "#0d47a1", fontWeight: "bold", marginTop: "10px" }} role="status">
+              {msg}
+            </p>
+          )}
+        </section>
 
-        <div className="admin-card">
-          <UploadForm importToken={importToken} />
-        </div>
+        <section className="admin-card" aria-labelledby="import-heading">
+          <UploadForm importToken={importToken} headingId="import-heading" />
+        </section>
 
         <AdminStats signupsByDate={signupsByDate} cityCounts={cityCounts} />
 
-        <h3 style={{ borderBottom: "2px solid #d32f2f", paddingBottom: "5px", display: "inline-block", marginBottom: "15px" }}>
-          רשימת לקוחות ({displayed.length})
-        </h3>
+        <section aria-labelledby="customers-heading">
+          <h2
+            id="customers-heading"
+            style={{
+              borderBottom: "2px solid #d32f2f",
+              paddingBottom: "5px",
+              display: "inline-block",
+              marginBottom: "15px",
+            }}
+          >
+            רשימת לקוחות ({displayed.length})
+          </h2>
 
-        <div className="filter-chips">
-          {[
-            { key: "", label: `הכל (${customers.length})`, href: "/admin" },
-            { key: "signup_today", label: `נרשמו היום (${signupTodayCount})`, href: "/admin?filter=signup_today" },
-            { key: "unsub_today", label: `הוסרו היום (${removedTodayCount})`, href: "/admin?filter=unsub_today" },
-          ].map((f) => (
-            <Link key={f.key || "all"} href={f.href} className="filter-chip" data-active={filter === f.key}>
-              {f.label}
-            </Link>
-          ))}
-        </div>
+          {/* These links replace the list below them, so they are a navigation
+              region and the current one is marked with aria-current. */}
+          <nav className="filter-chips" aria-label="סינון רשימת הלקוחות">
+            {[
+              { key: "", label: `הכל (${customers.length})`, href: "/admin" },
+              { key: "signup_today", label: `נרשמו היום (${signupTodayCount})`, href: "/admin?filter=signup_today" },
+              { key: "unsub_today", label: `הוסרו היום (${removedTodayCount})`, href: "/admin?filter=unsub_today" },
+            ].map((f) => (
+              <Link
+                key={f.key || "all"}
+                href={f.href}
+                className="filter-chip"
+                data-active={filter === f.key}
+                aria-current={filter === f.key ? "page" : undefined}
+              >
+                {f.label}
+              </Link>
+            ))}
+          </nav>
 
-        <CustomerTable customers={customerViews} importToken={importToken} />
+          <CustomerTable customers={customerViews} importToken={importToken} />
+        </section>
 
-        <div className="danger-zone">
-          <h3>אזור מסוכן</h3>
-          <p style={{ fontSize: "13px" }}>פעולות בלתי הפיכות. להשתמש בזהירות.</p>
+        <section className="danger-zone" aria-labelledby="danger-heading">
+          <h2 id="danger-heading">אזור מסוכן</h2>
+          <p style={{ fontSize: "0.8125rem" }}>פעולות בלתי הפיכות. להשתמש בזהירות.</p>
           <ResetDbForm importToken={importToken} />
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

@@ -3,6 +3,7 @@ import { getDb, initDb } from "@/lib/db";
 import { getAppSecret } from "@/lib/security";
 import { resolveAppBaseUrl, publishSmsTask } from "@/lib/qstash";
 import { issueMonthlyGifts } from "@/lib/gifts";
+import { purgeStalePhoneVerifications } from "@/lib/phone-verification";
 import { birthdaySms, anniversarySms } from "@/lib/sms-messages";
 
 const QSTASH_TOKEN = process.env.QSTASH_TOKEN;
@@ -31,6 +32,13 @@ async function handleCron(req: NextRequest) {
   // Issue this month's gifts FIRST — gift existence must never depend on
   // QStash being configured or reachable.
   const { birthday, anniversary } = await issueMonthlyGifts(db);
+  // Housekeeping, never allowed to fail the run: expired verification rows are
+  // dead weight once both the code and its send window have aged out.
+  try {
+    await purgeStalePhoneVerifications(db);
+  } catch (e) {
+    console.error("Failed to purge stale phone verifications:", e);
+  }
   if (db.type === "sqlite") db.conn.close();
 
   const baseUrl = resolveAppBaseUrl(req.nextUrl.origin);

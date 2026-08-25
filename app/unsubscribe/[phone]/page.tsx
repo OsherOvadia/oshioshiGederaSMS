@@ -32,16 +32,16 @@ export default async function UnsubscribePage({
   }
 
   return (
-    <div className="container">
+    <main className="container" id="main-content">
       <div className="logo-area">
         <Logo />
       </div>
-      <h2 className="success">הוסרת בהצלחה</h2>
+      <h1 className="success">הוסרת בהצלחה</h1>
       <p>לא תקבלו מאיתנו יותר הודעות.</p>
       <p>התחרטתם? תמיד אפשר לחזור — ניתן להירשם מחדש בכל רגע.</p>
       <a className="btn-ghost" href="/">
         הצטרפות מחדש למועדון
       </a>
-    </div>
+    </main>
   );
 }

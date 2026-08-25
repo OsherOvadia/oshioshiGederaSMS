@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useId, useMemo, useState } from "react";
 
 // Cap how many rows we put in the DOM at once. The list can be thousands of
 // customers, and each row renders in both the desktop table and the mobile
@@ -22,14 +22,46 @@ export type CustomerView = {
 
 type Props = { customers: CustomerView[]; importToken: string };
 
-function ToggleForm({ phone, active, importToken }: { phone: string; active: boolean; importToken: string }) {
+const TH: React.CSSProperties = { padding: "10px", textAlign: "right" };
+const TH_CENTER: React.CSSProperties = { padding: "10px", textAlign: "center" };
+
+function ToggleForm({ c, importToken }: { c: CustomerView; importToken: string }) {
+  const label = c.name ? `${c.name} (${c.phone})` : c.phone;
   return (
     <form action="/api/admin/toggle" method="POST" style={{ display: "inline" }}>
       <input type="hidden" name="import_token" value={importToken} />
-      <input type="hidden" name="phone" value={phone} />
-      <input type="hidden" name="action" value={active ? "block" : "unblock"} />
+      <input type="hidden" name="phone" value={c.phone} />
+      <input type="hidden" name="action" value={c.active ? "block" : "unblock"} />
       <button type="submit" className="admin-table-btn">
-        {active ? "⛔ חסימה" : "✅ שחזור"}
+        <span aria-hidden="true">{c.active ? "⛔ " : "✅ "}</span>
+        {c.active ? "חסימה" : "שחזור"}
+        {/* Every row repeats the same two words; without the name the button
+            list is unusable when read out of context. */}
+        <span className="sr-only"> של {label}</span>
+      </button>
+    </form>
+  );
+}
+
+function DeleteForm({ c, importToken }: { c: CustomerView; importToken: string }) {
+  const label = c.name ? `${c.name} (${c.phone})` : c.phone;
+  return (
+    <form
+      action="/api/admin/delete-customer"
+      method="POST"
+      style={{ display: "inline" }}
+      onSubmit={(e) => {
+        // Permanent and unrecoverable — unlike חסימה, which is reversible.
+        if (!window.confirm(`למחוק את ${label} לצמיתות? הפעולה תמחק גם את המתנות של הלקוח ואינה ניתנת לשחזור.`)) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="import_token" value={importToken} />
+      <input type="hidden" name="phone" value={c.phone} />
+      <button type="submit" className="admin-table-btn admin-table-btn-danger">
+        <span aria-hidden="true">🗑 </span>מחיקה
+        <span className="sr-only"> לצמיתות של {label}</span>
       </button>
     </form>
   );
@@ -37,7 +69,7 @@ function ToggleForm({ phone, active, importToken }: { phone: string; active: boo
 
 function StatusBadges({ c }: { c: CustomerView }) {
   return (
-    <span style={{ display: "inline-flex", gap: "6px" }}>
+    <span style={{ display: "inline-flex", gap: "6px", flexWrap: "wrap" }}>
       {c.active ? <span className="badge badge-active">פעיל</span> : <span className="badge badge-removed">הוסר</span>}
       {c.isNew && <span className="badge badge-new">חדש</span>}
     </span>
@@ -48,6 +80,9 @@ export default function CustomerTable({ customers, importToken }: Props) {
   const [query, setQuery] = useState("");
   // Defer the heavy filter+render off the keystroke so typing stays responsive.
   const deferredQuery = useDeferredValue(query);
+  const ids = useId();
+  const searchId = `${ids}-search`;
+  const countId = `${ids}-count`;
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -64,18 +99,26 @@ export default function CustomerTable({ customers, importToken }: Props) {
 
   const shown = filtered.slice(0, RENDER_LIMIT);
   const hasQuery = deferredQuery.trim() !== "";
+  const emptyMessage = hasQuery ? "אין תוצאות לחיפוש הזה" : "אין לקוחות להצגה";
 
   return (
     <>
-      <input
-        type="search"
-        className="table-search"
-        placeholder="חיפוש לפי שם, טלפון, עיר או דוא&quot;ל..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        aria-label="חיפוש לקוחות"
-      />
-      <p style={{ fontSize: "13px", margin: "0 0 10px", color: "#666" }}>
+      <div className="form-group">
+        <label htmlFor={searchId}>חיפוש לקוחות</label>
+        <input
+          type="search"
+          id={searchId}
+          className="table-search"
+          placeholder="שם, טלפון, עיר או דוא&quot;ל..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoComplete="off"
+          aria-describedby={countId}
+        />
+      </div>
+      {/* Announces the new count as the list narrows — the visual feedback of a
+          shrinking table is invisible to a screen-reader user. */}
+      <p id={countId} role="status" aria-live="polite" style={{ fontSize: "0.8125rem", margin: "0 0 10px", color: "#5f5a55" }}>
         {hasQuery
           ? `${filtered.length} תוצאות מתוך ${customers.length}`
           : `${customers.length} לקוחות`}
@@ -83,44 +126,78 @@ export default function CustomerTable({ customers, importToken }: Props) {
           ` · מציג ${RENDER_LIMIT} ראשונים — חפשו כדי לצמצם`}
       </p>
 
-      {/* Desktop: full table */}
-      <div className="customers-desktop admin-table-wrap">
+      {/* Desktop: full table. tabIndex makes the horizontal scroller reachable
+          by keyboard — a scrollable region that can't be focused fails WCAG
+          2.1.1 because its off-screen columns are unreachable without a mouse. */}
+      <div
+        className="customers-desktop admin-table-wrap"
+        role="region"
+        aria-label="טבלת לקוחות"
+        tabIndex={0}
+      >
         <table className="admin-table">
+          <caption className="sr-only">
+            רשימת לקוחות המועדון — שם, פרטי קשר, תאריכים, סטטוס ופעולות
+          </caption>
           <thead style={{ background: "#f5f5f5" }}>
             <tr style={{ borderBottom: "2px solid #d32f2f" }}>
-              <th style={{ padding: "10px", textAlign: "right" }}>שם</th>
-              <th style={{ padding: "10px", textAlign: "right" }}>דוא&quot;ל</th>
-              <th style={{ padding: "10px", textAlign: "right" }}>טלפון</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>תאריך לידה</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>יום נישואין</th>
-              <th style={{ padding: "10px", textAlign: "right" }}>עיר</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>תאריך רישום</th>
-              <th style={{ padding: "10px", textAlign: "center" }}>סטטוס</th>
-              <th style={{ padding: "10px", textAlign: "center" }}></th>
+              <th scope="col" style={TH}>
+                שם
+              </th>
+              <th scope="col" style={TH}>
+                דוא&quot;ל
+              </th>
+              <th scope="col" style={TH}>
+                טלפון
+              </th>
+              <th scope="col" style={TH_CENTER}>
+                תאריך לידה
+              </th>
+              <th scope="col" style={TH_CENTER}>
+                יום נישואין
+              </th>
+              <th scope="col" style={TH}>
+                עיר
+              </th>
+              <th scope="col" style={TH_CENTER}>
+                תאריך רישום
+              </th>
+              <th scope="col" style={TH_CENTER}>
+                סטטוס
+              </th>
+              <th scope="col" style={TH_CENTER}>
+                <span className="sr-only">פעולות</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ padding: "20px", textAlign: "center", color: "#666" }}>
-                  אין תוצאות
+                <td colSpan={9} style={{ padding: "20px", textAlign: "center", color: "#5f5a55" }}>
+                  {emptyMessage}
                 </td>
               </tr>
             )}
             {shown.map((c) => (
               <tr key={c.phone} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: "10px", textAlign: "right" }}>{c.name}</td>
-                <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.email || "-"}</td>
-                <td style={{ padding: "10px", textAlign: "right", fontSize: "12px", direction: "ltr" }}>{c.phone}</td>
-                <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{c.date_of_birth || "-"}</td>
-                <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{c.wedding_day || "-"}</td>
-                <td style={{ padding: "10px", textAlign: "right", fontSize: "12px" }}>{c.city || "-"}</td>
-                <td style={{ padding: "10px", textAlign: "center", fontSize: "12px" }}>{c.regDate}</td>
-                <td style={{ padding: "10px", textAlign: "center" }}>
+                {/* The name identifies the row, so it is a row header. */}
+                <th scope="row" style={{ ...TH, fontWeight: 600 }}>
+                  {c.name}
+                </th>
+                <td style={{ ...TH, fontSize: "0.75rem" }}>{c.email || "-"}</td>
+                <td style={{ ...TH, fontSize: "0.75rem" }}>
+                  <bdi style={{ direction: "ltr", unicodeBidi: "embed" }}>{c.phone}</bdi>
+                </td>
+                <td style={{ ...TH_CENTER, fontSize: "0.75rem" }}>{c.date_of_birth || "-"}</td>
+                <td style={{ ...TH_CENTER, fontSize: "0.75rem" }}>{c.wedding_day || "-"}</td>
+                <td style={{ ...TH, fontSize: "0.75rem" }}>{c.city || "-"}</td>
+                <td style={{ ...TH_CENTER, fontSize: "0.75rem" }}>{c.regDate}</td>
+                <td style={TH_CENTER}>
                   <StatusBadges c={c} />
                 </td>
-                <td style={{ padding: "10px", textAlign: "center" }}>
-                  <ToggleForm phone={c.phone} active={c.active} importToken={importToken} />
+                <td style={{ ...TH_CENTER, whiteSpace: "nowrap" }}>
+                  <ToggleForm c={c} importToken={importToken} />
+                  <DeleteForm c={c} importToken={importToken} />
                 </td>
               </tr>
             ))}
@@ -129,17 +206,19 @@ export default function CustomerTable({ customers, importToken }: Props) {
       </div>
 
       {/* Mobile: cards with progressive disclosure */}
-      <div className="customers-mobile">
-        {filtered.length === 0 && <p style={{ textAlign: "center" }}>אין תוצאות</p>}
+      <ul className="customers-mobile" aria-label="רשימת לקוחות">
+        {filtered.length === 0 && (
+          <li style={{ textAlign: "center", color: "#5f5a55" }}>{emptyMessage}</li>
+        )}
         {shown.map((c) => (
-          <div key={c.phone} className="customer-card">
+          <li key={c.phone} className="customer-card">
             <div className="customer-card-head">
-              <span className="customer-card-name">{c.name}</span>
+              <h3 className="customer-card-name">{c.name}</h3>
               <StatusBadges c={c} />
             </div>
             <p className="customer-card-line">
-              <a href={`tel:${c.phone}`} style={{ direction: "ltr", unicodeBidi: "embed" }}>
-                {c.phone}
+              <a href={`tel:${c.phone}`}>
+                <bdi style={{ direction: "ltr", unicodeBidi: "embed" }}>{c.phone}</bdi>
               </a>
               {c.city ? ` · ${c.city}` : ""}
             </p>
@@ -150,12 +229,13 @@ export default function CustomerTable({ customers, importToken }: Props) {
               <p className="customer-card-line">תאריך לידה: {c.date_of_birth || "-"}</p>
               <p className="customer-card-line">יום נישואין: {c.wedding_day || "-"}</p>
             </details>
-            <div style={{ marginTop: "6px" }}>
-              <ToggleForm phone={c.phone} active={c.active} importToken={importToken} />
+            <div style={{ marginTop: "6px", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <ToggleForm c={c} importToken={importToken} />
+              <DeleteForm c={c} importToken={importToken} />
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </>
   );
 }
