@@ -4,7 +4,7 @@ import { getUnsubscribeKeyword } from "@/lib/unsubscribe";
 import { getPublicAppUrl } from "@/lib/app-url";
 import { getClientIp } from "@/lib/get-ip";
 import { checkRateLimit, LIMITS } from "@/lib/ratelimit";
-import { sendSmsViaGateway } from "@/lib/sms-gateway";
+import { sendSms, canReceiveSmsReplies } from "@/lib/sms";
 import { initDb, getDb, runDb } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
@@ -35,11 +35,15 @@ export async function POST(req: NextRequest) {
   const clean = phone.replace("+", "");
   const baseUrl = getPublicAppUrl() || req.nextUrl.origin;
   const unsubLink = `${baseUrl.replace(/\/+$/, "")}/unsubscribe/${clean}?token=${token}`;
-  const finalMsg = `${message}\n\nלהסרה: השב/י ${getUnsubscribeKeyword()} או לחצ/י כאן: ${unsubLink}`;
+  // An alphanumeric sender (e.g. "OshiOshi" via 019) can't receive replies,
+  // so the reply-keyword instruction is only offered when it would work.
+  const finalMsg = canReceiveSmsReplies()
+    ? `${message}\n\nלהסרה: השב/י ${getUnsubscribeKeyword()} או לחצ/י כאן: ${unsubLink}`
+    : `${message}\n\nלהסרה: לחצ/י כאן: ${unsubLink}`;
 
-  const result = await sendSmsViaGateway(phone, finalMsg);
+  const result = await sendSms(phone, finalMsg);
   if (!result.ok) {
-    console.error("SMS Gateway Error", result.status ?? "", result.error);
+    console.error("SMS send error", result.status ?? "", result.error);
     return NextResponse.json({ status: "error", error: result.error }, { status: 500 });
   }
 
