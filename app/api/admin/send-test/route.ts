@@ -4,10 +4,7 @@ import { verifyImportToken, generateSecureToken } from "@/lib/security";
 import { getPublicAppUrl } from "@/lib/app-url";
 import { formatPhone, isValidPhone } from "@/lib/validation";
 import { initDb, getDb, runDb } from "@/lib/db";
-
-const SMS_LOGIN = process.env.ANDROID_SMS_GATEWAY_LOGIN;
-const SMS_PASS = process.env.ANDROID_SMS_GATEWAY_PASSWORD;
-const SMS_URL = (process.env.ANDROID_SMS_GATEWAY_API_URL || "https://api.sms-gate.app/3rdparty/v1").replace(/\/$/, "");
+import { isRealSmsConfigured, sendSms } from "@/lib/sms";
 
 async function redirectAdmin(req: NextRequest, msg: string, sessionOk: boolean) {
   const url = new URL("/admin", req.url);
@@ -35,7 +32,7 @@ export async function POST(req: NextRequest) {
     return redirectAdmin(req, "מספר טלפון לא תקין. נא להזין מספר מלא (למשל 0501234567 או +972501234567).", sessionOk);
   }
 
-  if (!SMS_LOGIN || !SMS_PASS) {
+  if (!isRealSmsConfigured()) {
     return redirectAdmin(req, "שגיאה: חסר הגדרת שער SMS.", sessionOk);
   }
 
@@ -45,28 +42,11 @@ export async function POST(req: NextRequest) {
   const unsubLink = `${baseUrl.replace(/\/+$/, "")}/unsubscribe/${clean}?token=${token}`;
   const finalMsg = `${message}\n\nלהסרה: ${unsubLink}`;
 
-  const payload = {
-    textMessage: { text: finalMsg },
-    phoneNumbers: [phone],
-    withDeliveryReport: true,
-  };
-
   try {
-    const auth = Buffer.from(`${SMS_LOGIN}:${SMS_PASS}`).toString("base64");
-    const res = await fetch(`${SMS_URL}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("SMS Gateway Error (test)", res.status, text);
-      return redirectAdmin(req, "שליחת הודעת הבדיקה נכשלה: " + (text || res.status), sessionOk);
+    const result = await sendSms(phone, finalMsg);
+    if (!result.ok) {
+      console.error("SMS send error (test)", result.status ?? "", result.error);
+      return redirectAdmin(req, "שליחת הודעת הבדיקה נכשלה: " + (result.error || result.status), sessionOk);
     }
     try {
       await initDb();
