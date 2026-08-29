@@ -94,6 +94,24 @@ export function isRealSmsConfigured(): boolean {
   return provider.name !== mockSmsProvider.name && provider.isConfigured();
 }
 
+/**
+ * Whether a customer can text back to whatever these messages arrive from.
+ * The Android gateway sends from a SIM, so replies work. 019 sends from the
+ * configured `source`: a numeric source can receive replies, an alphanumeric
+ * sender name cannot — an SMS "from OshiOshi" is one-way, so telling the
+ * customer to reply with the unsubscribe keyword would be a dead end (and a
+ * spam-law liability). The footer in /api/send_sms_task keys off this.
+ */
+export function canReceiveSmsReplies(): boolean {
+  const provider = getSmsProvider();
+  if (provider.name === sms019Provider.name) {
+    const source = (process.env.SMS_019_SOURCE || process.env.SMS_SENDER_ID || "").trim();
+    return /^\d+$/.test(source);
+  }
+  // android_gateway sends from its SIM; the mock mirrors that default.
+  return true;
+}
+
 function digitsOf(phone: string): string {
   return formatPhone(phone).replace(/\D/g, "");
 }

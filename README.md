@@ -78,7 +78,7 @@ VIP club registration with SMS broadcast and birthday reminders. Refactored from
 All outbound SMS goes through one registry, [lib/sms](lib/sms/index.ts). A provider is an adapter in `lib/sms/providers/` implementing `SmsProvider` (`isConfigured()` + `send()`); `SMS_PROVIDER` selects the active one:
 
 - **`android_gateway`** (default) — the Android SMS Gateway app; sender is the SIM's phone number.
-- **`019`** — Telzar 019; sends under an alphanumeric name (`SMS_SENDER_ID`, ≤11 English letters/digits, e.g. `OshiOshi`). Requires `SMS_019_TOKEN` + `SMS_019_USERNAME`.
+- **`019`** — Telzar 019; sends under an alphanumeric name (`SMS_SENDER_ID`, ≤11 English letters/digits, e.g. `OshiOshi`). Requires `SMS_019_TOKEN` + `SMS_019_USERNAME`. When the sender is a name (not a number), recipients can't reply, so the marketing footer automatically drops the reply-keyword instruction and keeps only the unsubscribe link.
 - **`mock`** — records and logs instead of sending. Always successful, never networked.
 
 `SMS_FALLBACK_PROVIDER` optionally names a second provider tried when the first send fails (production only) — e.g. run `SMS_PROVIDER=019` with `SMS_FALLBACK_PROVIDER=android_gateway` during a migration, and roll back by flipping one env var.

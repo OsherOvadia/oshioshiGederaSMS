@@ -1,5 +1,12 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { getSmsProvider, sendSms, isRealSmsConfigured, smsEnvironment, mockSmsOutbox } from "@/lib/sms";
+import {
+  getSmsProvider,
+  sendSms,
+  isRealSmsConfigured,
+  smsEnvironment,
+  mockSmsOutbox,
+  canReceiveSmsReplies,
+} from "@/lib/sms";
 
 /**
  * The safety guard is the point of lib/sms: a test run must be incapable of
@@ -162,6 +169,27 @@ describe("production selection", () => {
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain('Unknown SMS_PROVIDER "twilio"');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("replies are possible with the Android gateway (SIM number sender)", () => {
+    stubEnvironment("production");
+    stubAndroidCreds();
+    expect(canReceiveSmsReplies()).toBe(true);
+  });
+
+  it("replies are impossible under 019 with an alphanumeric sender name", () => {
+    stubEnvironment("production");
+    vi.stubEnv("SMS_PROVIDER", "019");
+    stub019Creds(); // SMS_SENDER_ID=OshiOshi
+    expect(canReceiveSmsReplies()).toBe(false);
+  });
+
+  it("replies are possible under 019 with a numeric source", () => {
+    stubEnvironment("production");
+    vi.stubEnv("SMS_PROVIDER", "019");
+    stub019Creds();
+    vi.stubEnv("SMS_019_SOURCE", "0559999900");
+    expect(canReceiveSmsReplies()).toBe(true);
   });
 
   it("falls back to SMS_FALLBACK_PROVIDER when the primary fails", async () => {
